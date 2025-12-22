@@ -125,16 +125,6 @@
                 border-color: #7f1d1d;
                 color: #fecaca;
             }
-            .toast.toast--info {
-                background: #eff6ff;
-                border-color: #bfdbfe;
-                color: #1e40af;
-            }
-            body.dark-theme .toast.toast--info {
-                background: #0b1a3a;
-                border-color: #1e3a8a;
-                color: #bfdbfe;
-            }
             .toast-header {
                 display: flex;
                 justify-content: space-between;
@@ -4089,10 +4079,7 @@
 
             function undo() {
                 const entry = historyStack.pop();
-                if (!entry) {
-                    showToast("Nothing to undo", null, "info", 2500);
-                    return;
-                }
+                if (!entry) return;
                 clearSelection();
                 if (entry.type === "edit") {
                     fixtures[entry.rowIndex][entry.colKey] = entry.before;
@@ -4109,19 +4096,11 @@
                 renderTable();
                 updateStats();
                 updateUndoButtons();
-                const detail =
-                    entry.type === "edit"
-                        ? `Reverted cell ${entry.colKey}`
-                        : "Reverted bulk edit";
-                showToast("Undone", [detail], "info", 2500);
             }
 
             function redo() {
                 const entry = redoStack.pop();
-                if (!entry) {
-                    showToast("Nothing to redo", null, "info", 2500);
-                    return;
-                }
+                if (!entry) return;
                 clearSelection();
                 if (entry.type === "edit") {
                     fixtures[entry.rowIndex][entry.colKey] = entry.after;
@@ -4138,11 +4117,6 @@
                 renderTable();
                 updateStats();
                 updateUndoButtons();
-                const detail =
-                    entry.type === "edit"
-                        ? `Reapplied cell ${entry.colKey}`
-                        : "Reapplied bulk edit";
-                showToast("Redone", [detail], "info", 2500);
             }
 
             undoBtn.addEventListener("click", undo);
@@ -4691,13 +4665,13 @@
             }
 
             // Toast notification helper
-            function showToast(title, items, variant = "error", duration = 8000) {
+            function showToast(title, items) {
                 // Remove existing toast if any
                 const existing = document.querySelector(".toast");
                 if (existing) existing.remove();
 
                 const toast = document.createElement("div");
-                toast.className = `toast toast--${variant}`;
+                toast.className = "toast";
 
                 const header = document.createElement("div");
                 header.className = "toast-header";
@@ -4724,10 +4698,10 @@
 
                 document.body.appendChild(toast);
 
-                // Auto-dismiss after duration
+                // Auto-dismiss after 8 seconds
                 setTimeout(() => {
                     if (toast.parentNode) toast.remove();
-                }, duration);
+                }, 8000);
             }
 
             // ====================================
