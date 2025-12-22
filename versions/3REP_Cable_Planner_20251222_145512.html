@@ -1272,13 +1272,6 @@
                 border-color: var(--primary) !important;
                 background: var(--primary-light) !important;
             }
-
-            .pd-preset-btn.disabled, .dd-preset-btn.disabled {
-                opacity: 0.5;
-                pointer-events: none;
-                filter: grayscale(50%);
-                cursor: not-allowed;
-            }
         </style>
     </head>
     <body>
@@ -1430,29 +1423,26 @@
                                     </div>
                                 </div>
 
-                                <!-- PD Preset Selection -->
+                                <!-- PD Preset Selection - Shown when TSV is loaded -->
                                 <div id="pdPresetSelection" style="margin-top: 16px; display: none;">
-                                    <div id="pdPresetHint" style="display: none; font-size: 11px; color: var(--text-soft); margin-bottom: 10px;">
-                                        Load TSV to unlock preset cards. Custom is always available.
-                                    </div>
                                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
-                                        <button class="pd-preset-btn" data-preset="applied" onclick="selectPDPreset('applied')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="pd-preset-btn" onclick="selectPDPreset('applied')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">⚡ Applied Distro</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">5x 120V + 1x 208V MULTs</div>
                                         </button>
-                                        <button class="pd-preset-btn" data-preset="lex48" onclick="selectPDPreset('lex48')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="pd-preset-btn" onclick="selectPDPreset('lex48')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">⚡ Lex 48 Circuit</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">Presidential Power Rack</div>
                                         </button>
-                                        <button class="pd-preset-btn" data-preset="lex15" onclick="selectPDPreset('lex15')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="pd-preset-btn" onclick="selectPDPreset('lex15')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">⚡ Lex 15x20amp Edison</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">2x 120V MULTs</div>
                                         </button>
-                                        <button class="pd-preset-btn" data-preset="lex12" onclick="selectPDPreset('lex12')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="pd-preset-btn" onclick="selectPDPreset('lex12')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">⚡ Lex 12x20amp L6-20</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">2x 208V MULTs</div>
                                         </button>
-                                        <button class="pd-preset-btn" data-preset="custom" onclick="selectPDPreset('custom')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="pd-preset-btn" onclick="selectPDPreset('custom')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">⚙️ Custom</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">Configure manually</div>
                                         </button>
@@ -1503,21 +1493,18 @@
                                     <div style="font-size: 11px; color: var(--text-soft);">Device presets require TSV; you can still choose a mode now.</div>
                                 </div>
 
-                                <!-- DD Device Selection -->
-                                <div id="ddDeviceSelection" style="margin-top: 16px; display: block;">
-                                    <div id="ddPresetHint" style="display: none; font-size: 11px; color: var(--text-soft); margin-bottom: 10px;">
-                                        Load TSV to unlock device presets. Custom is always available.
-                                    </div>
+                                <!-- DD Device Selection - Shown when mode is selected and TSV is loaded -->
+                                <div id="ddDeviceSelection" style="margin-top: 16px; display: none;">
                                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
-                                        <button class="dd-preset-btn" data-preset="node-netx2" onclick="selectDDDevice('node-netx2')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="dd-preset-btn" onclick="selectDDDevice('node-netx2')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">🧠 Chauvet Net-X II</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">8 universes, 8 outputs</div>
                                         </button>
-                                        <button class="dd-preset-btn" data-preset="splitter-ds4" onclick="selectDDDevice('splitter-ds4')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="dd-preset-btn" onclick="selectDDDevice('splitter-ds4')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">🎛️ Chauvet DJ Data Stream 4</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">1 universe, 8 outputs (Opti)</div>
                                         </button>
-                                        <button class="dd-preset-btn" data-preset="custom" onclick="selectDDDevice('custom')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
+                                        <button class="dd-preset-btn" onclick="selectDDDevice('custom')" style="padding: 24px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-weight: 600; margin-bottom: 4px;">⚙️ Custom</div>
                                             <div style="font-size: 11px; color: var(--text-soft);">Configure manually</div>
                                         </button>
@@ -3393,22 +3380,6 @@
                     }
                 }
 
-                if (pdPresetSelection) {
-                    const presetButtons = pdPresetSelection.querySelectorAll('.pd-preset-btn');
-                    const presetHint = $('pdPresetHint');
-                    presetButtons.forEach((button) => {
-                        const presetValue = button.dataset.preset;
-                        if (!hasTSV && presetValue !== 'custom') {
-                            button.classList.add('disabled');
-                        } else {
-                            button.classList.remove('disabled');
-                        }
-                    });
-                    if (presetHint) {
-                        presetHint.style.display = hasTSV ? 'none' : 'block';
-                    }
-                }
-
                 // Data Distribution presets (requires TSV)
                 const ddTSVPrompt = $('ddTSVPrompt');
 
@@ -3417,23 +3388,6 @@
                         ddTSVPrompt.style.display = 'none';
                     } else {
                         ddTSVPrompt.style.display = 'block';
-                    }
-                }
-
-                const ddDeviceSelection = $('ddDeviceSelection');
-                if (ddDeviceSelection) {
-                    const presetButtons = ddDeviceSelection.querySelectorAll('.dd-preset-btn');
-                    const presetHint = $('ddPresetHint');
-                    presetButtons.forEach((button) => {
-                        const presetValue = button.dataset.preset;
-                        if (!hasTSV && presetValue !== 'custom') {
-                            button.classList.add('disabled');
-                        } else {
-                            button.classList.remove('disabled');
-                        }
-                    });
-                    if (presetHint) {
-                        presetHint.style.display = hasTSV ? 'none' : 'block';
                     }
                 }
 
@@ -6410,9 +6364,9 @@
                         selectedBtn.classList.add('selected');
                     }
                 } else {
-                    // No mode selected - keep mode selection and device selection visible
+                    // No mode selected - show mode selection, hide device selection
                     $('dataModeSelection').style.display = 'block';
-                    $('ddDeviceSelection').style.display = 'block';
+                    $('ddDeviceSelection').style.display = 'none';
                 }
             }
 
