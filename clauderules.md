@@ -1,98 +1,75 @@
-# AI Assistant Rules for LXCablePlanner
+# Claude CLI Rules for LXCablePlanner
 
-## Project Overview
-This is a Cable Planning Tool for Live Events that processes MVR and TXT files to create cable lists. The main application is a single-page HTML application.
+This document defines when and how to use Claude CLI, focusing on tasks where it excels over Codex.
 
 ---
 
-## General Rules
+## When to Use Claude CLI
 
-### 1. Code Consistency
-- Maintain the existing code style and structure
-- Do not refactor working code unless explicitly requested
-- Keep changes minimal and focused on the task at hand
+Claude is the stronger tool for these tasks:
 
-### 2. File Structure
+### 1. Git Operations
+**Why Claude is better:** Native git integration with automatic commit formatting, branch management, and PR creation built-in.
+- Commit, push, pull, and branch operations
+- Creating well-formatted commit messages
+- Managing pull requests via `gh` CLI
+- Resolving merge conflicts with full context
+
+### 2. Codebase Exploration & Understanding
+**Why Claude is better:** Specialized search agents, parallel file reading, and pattern matching across large codebases.
+- Finding where functionality is implemented
+- Understanding code flow across multiple files
+- Answering "how does X work?" questions
+- Tracing dependencies and imports
+
+### 3. Complex Multi-Step Tasks
+**Why Claude is better:** Built-in task planning (TodoWrite), progress tracking, and ability to break down complex work.
+- Feature implementations requiring multiple files
+- Refactoring with many interdependent changes
+- Debugging issues that span multiple components
+
+### 4. Code Review & Analysis
+**Why Claude is better:** Long context window allows reviewing entire files/features at once with deep reasoning.
+- Reviewing changes for bugs or issues
+- Security analysis
+- Suggesting architectural improvements
+- Identifying edge cases
+
+### 5. Documentation & Explanations
+**Why Claude is better:** Strong natural language generation and ability to understand context deeply.
+- Writing or updating README files
+- Explaining complex code sections
+- Creating technical documentation
+
+### 6. Interactive Problem Solving
+**Why Claude is better:** Can ask clarifying questions mid-task and adapt approach based on answers.
+- Ambiguous requirements that need clarification
+- Tasks where user preferences matter
+- Exploratory debugging
+
+### 7. Web Research & External Resources
+**Why Claude is better:** Built-in web search and URL fetching capabilities.
+- Looking up API documentation
+- Finding solutions to errors
+- Researching best practices
+
+---
+
+## Handoff Protocol
+
+When finishing a session or handing off to Codex:
+1. Commit all changes with clear messages
+2. State current task status and any pending work
+3. List files that were modified
+4. Note any issues encountered
+
+---
+
+## Project Reference
+
 - Main application: `💡 3REP Cable Planner_v2.html`
-- This is a self-contained HTML file with embedded CSS and JavaScript
-- Do not split into separate files unless requested
-
-### 3. Before Making Changes
-- Always read the relevant code sections before modifying
-- Understand the existing implementation before suggesting changes
-- Test changes mentally or describe expected behavior
-
----
-
-## Git Workflow
-
-### Commit Messages
-- Use clear, descriptive commit messages
-- Format: `<type>: <description>`
-- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`
-
-### Branches
-- Work on `main` unless otherwise specified
-- Pull latest changes before starting work
-- Commit frequently with atomic changes
-
----
-
-## Collaboration Rules (Claude CLI & ChatGPT/Codex)
-
-### Handoff Protocol
-1. **Document your changes**: When finishing a session, summarize what was done
-2. **Note pending tasks**: List any incomplete work or known issues
-3. **Avoid conflicts**: Don't leave uncommitted changes when possible
-
-### Communication
-- Use comments in code only when logic is complex
-- Update this document if new conventions are established
-- Keep README.md updated with significant feature changes
-
-### Conflict Resolution
-- If encountering merge conflicts, preserve both sets of changes when possible
-- When in doubt, ask the user before overwriting changes
-- Check git status before starting new work
-
----
-
-## Code Standards
-
-### HTML
-- Use semantic HTML5 elements
-- Maintain accessibility attributes where present
-- Keep inline styles minimal; prefer embedded CSS
-
-### CSS
-- Use consistent naming conventions
-- Group related styles together
-- Comment sections for clarity
-
-### JavaScript
-- Use clear variable and function names
-- Handle errors gracefully with user feedback
-- Preserve existing event handlers and logic patterns
-
----
-
-## Prohibited Actions
-- Do not delete or overwrite files without explicit permission
-- Do not introduce external dependencies without approval
-- Do not commit sensitive data or credentials
-- Do not make breaking changes to file import/export functionality
-
----
-
-## Quick Reference
-
-| Action | Command |
-|--------|---------|
-| Pull latest | `git pull` |
-| Check status | `git status` |
-| Stage all | `git add .` |
-| Commit | `git commit -m "type: message"` |
-| Push | `git push` |
+- Self-contained HTML with embedded CSS/JS
+- Processes MVR and TXT files for cable planning
 
 ---
 
