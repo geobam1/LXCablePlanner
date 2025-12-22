@@ -1155,24 +1155,6 @@
                 font-weight: 600;
             }
 
-            .toast {
-                position: fixed;
-                bottom: 80px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: var(--card);
-                border: 1px solid var(--border);
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-size: 12px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                z-index: 9999;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                pointer-events: none;
-            }
-            .toast.show { opacity: 1; }
-
             /* Mode Choice Buttons */
             .mode-choice-btn:hover {
                 border-color: var(--blue) !important;
@@ -1412,8 +1394,8 @@
                                 <div id="pdTSVPrompt" style="margin-top: 16px; display: none;">
                                     <div style="padding: 32px; border: 2px dashed var(--border); border-radius: 12px; background: var(--bg); text-align: center;">
                                         <div style="font-size: 48px; margin-bottom: 12px;">📋</div>
-                                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">Upload TSV using toolbar above</div>
-                                        <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 16px;">Use the toolbar above to load inventory and unlock power distribution presets</div>
+                                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">Load TSV for Inventory</div>
+                                        <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 16px;">Upload your inventory database to access power distribution presets</div>
                                         <div class="file-input-wrapper" style="display: inline-block;">
                                             <button class="btn btn-primary" style="padding: 10px 20px;">
                                                 <span class="icon">📂</span> Upload TSV
@@ -1465,8 +1447,8 @@
                                 <div id="ddTSVPrompt" style="margin-top: 16px; display: none;">
                                     <div style="padding: 32px; border: 2px dashed var(--border); border-radius: 12px; background: var(--bg); text-align: center;">
                                         <div style="font-size: 48px; margin-bottom: 12px;">📋</div>
-                                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">Upload TSV using toolbar above</div>
-                                        <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 16px;">Use the toolbar above to load inventory and unlock data distribution presets</div>
+                                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">Load TSV for Inventory</div>
+                                        <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 16px;">Upload your inventory database to access data distribution presets</div>
                                         <div class="file-input-wrapper" style="display: inline-block;">
                                             <button class="btn btn-primary" style="padding: 10px 20px;">
                                                 <span class="icon">📂</span> Upload TSV
@@ -1552,7 +1534,7 @@
                             <div id="fohConsolePrompt" style="display: none; margin-bottom: 24px;">
                                 <div style="padding: 32px; border: 2px dashed var(--border); border-radius: 12px; background: var(--bg); text-align: center;">
                                     <div id="fohConsolePromptIcon" style="font-size: 48px; margin-bottom: 12px;">🔴🟢</div>
-                                    <div id="fohConsolePromptTitle" style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">Upload files using toolbar above</div>
+                                    <div id="fohConsolePromptTitle" style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">Upload MVR & TXT Files</div>
                                     <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 16px;">Required to configure FOH console and connections</div>
                                     <div class="file-input-wrapper" style="display: inline-block;">
                                         <button class="btn btn-primary" style="padding: 10px 20px;">
@@ -1718,8 +1700,8 @@
                     <div class="stat-group" id="globalUploadPrompt" style="display: none;">
                         <div style="padding: 20px; border: 2px dashed var(--border); border-radius: 8px; background: var(--bg); text-align: center;">
                             <div id="globalPromptIcon" style="font-size: 32px; margin-bottom: 8px;">🔴🟢</div>
-                            <div id="globalPromptTitle" style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Upload files using toolbar above</div>
-                            <div style="font-size: 10px; color: var(--text-soft); margin-bottom: 12px;">Use the toolbar above to upload MVR/TXT files<br>TXT shows MULTs & Circuits; MVR shows fixture positions</div>
+                            <div id="globalPromptTitle" style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Upload MVR & TXT</div>
+                            <div style="font-size: 10px; color: var(--text-soft); margin-bottom: 12px;">TXT file required to show MULTs & Circuits<br>MVR file required to show fixture positions</div>
                             <div class="file-input-wrapper" style="display: inline-block;">
                                 <button class="btn btn-primary" style="padding: 6px 12px; font-size: 10px;">
                                     <span class="icon">📂</span> Upload Files
@@ -2343,7 +2325,6 @@
 
             // Track project changes
             function markProjectUpdated() {
-                recordHistory();
                 projectData.lastUpdated = new Date();
                 updateLastUpdatedDisplay();
                 updateBottomSummaryStrip();
@@ -2351,79 +2332,6 @@
 
                 // Auto-save to browser localStorage
                 autoSaveProject();
-            }
-
-            function captureSnapshot() {
-                return JSON.parse(JSON.stringify(projectData));
-            }
-
-            function restoreSnapshot(snapshot) {
-                projectData = snapshot;
-                if (projectData.lastUpdated) {
-                    projectData.lastUpdated = new Date(projectData.lastUpdated);
-                }
-                renderPDs();
-                renderDDs();
-                renderCustomFixtures();
-                renderConsoleDisplay();
-                renderConnections();
-                renderRoutingDiagram();
-                updateStats();
-                updateBottomSummaryStrip();
-                updateSectionProgress();
-                updateSidebarForSection(projectData.activeSection || 'boh');
-                updateLastUpdatedDisplay();
-            }
-
-            function recordHistory() {
-                if (isRestoringHistory) return;
-
-                if (lastSnapshot) {
-                    const label = `Change at ${new Date().toLocaleTimeString()}`;
-                    historyStack.push({ snapshot: lastSnapshot, label: label });
-                    if (historyStack.length > 50) historyStack.shift();
-                    redoStack = [];
-                }
-
-                lastSnapshot = captureSnapshot();
-                updateUndoRedoButtons();
-            }
-
-            function updateUndoRedoButtons() {
-                if (undoBtn && redoBtn) {
-                    undoBtn.disabled = historyStack.length === 0;
-                    redoBtn.disabled = redoStack.length === 0;
-                }
-            }
-
-            function undo() {
-                if (historyStack.length === 0) {
-                    showToast('Nothing to undo');
-                    return;
-                }
-
-                const entry = historyStack.pop();
-                redoStack.push({ snapshot: captureSnapshot(), label: entry.label });
-                isRestoringHistory = true;
-                restoreSnapshot(entry.snapshot);
-                isRestoringHistory = false;
-                updateUndoRedoButtons();
-                showToast(`Undone: ${entry.label}`);
-            }
-
-            function redo() {
-                if (redoStack.length === 0) {
-                    showToast('Nothing to redo');
-                    return;
-                }
-
-                const entry = redoStack.pop();
-                historyStack.push({ snapshot: captureSnapshot(), label: entry.label });
-                isRestoringHistory = true;
-                restoreSnapshot(entry.snapshot);
-                isRestoringHistory = false;
-                updateUndoRedoButtons();
-                showToast(`Redone: ${entry.label}`);
             }
 
             function autoSaveProject() {
@@ -2646,8 +2554,6 @@
 
             let historyStack = [];
             let redoStack = [];
-            let lastSnapshot = null;
-            let isRestoringHistory = false;
 
             // ============================================
             // Persistent File Storage
@@ -3094,21 +3000,11 @@
             const undoBtn = $("undoBtn");
             const redoBtn = $("redoBtn");
 
-            function showToast(message, duration = 2500) {
-                const toast = $('toast');
-                if (!toast) return;
-                toast.textContent = message;
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), duration);
-            }
-
             // ============================================
             // File Input & Drag-Drop
             // ============================================
             fileInput.addEventListener("change", handleFileUpload);
             folderInput.addEventListener("change", handleFileUpload);
-            undoBtn.addEventListener("click", undo);
-            redoBtn.addEventListener("click", redo);
 
             // Drag and drop support
             const dropZone = document.querySelector('.card');
@@ -3411,13 +3307,13 @@
                         if (fohConsolePromptIcon && fohConsolePromptTitle) {
                             if (!hasMVR && !hasTXT) {
                                 fohConsolePromptIcon.textContent = '🔴🟢';
-                                fohConsolePromptTitle.textContent = 'Upload MVR & TXT using toolbar above';
+                                fohConsolePromptTitle.textContent = 'Upload MVR & TXT Files';
                             } else if (!hasMVR) {
                                 fohConsolePromptIcon.textContent = '🔴';
-                                fohConsolePromptTitle.textContent = 'Upload MVR using toolbar above';
+                                fohConsolePromptTitle.textContent = 'Upload MVR File';
                             } else if (!hasTXT) {
                                 fohConsolePromptIcon.textContent = '🟢';
-                                fohConsolePromptTitle.textContent = 'Upload TXT using toolbar above';
+                                fohConsolePromptTitle.textContent = 'Upload TXT File';
                             }
                         }
                     }
@@ -7898,21 +7794,21 @@
                     circuitAssignmentStats.style.display = 'block';
                     bohStats.style.display = 'block';
                     globalPromptIcon.textContent = '🔴';
-                    globalPromptTitle.textContent = 'Upload MVR using toolbar above';
+                    globalPromptTitle.textContent = 'Upload MVR File';
                 } else if (hasMVR) {
                     // MVR only - show prompt for TXT, keep stats visible with placeholders
                     globalUploadPrompt.style.display = 'block';
                     circuitAssignmentStats.style.display = 'block';
                     bohStats.style.display = 'block';
                     globalPromptIcon.textContent = '🟢';
-                    globalPromptTitle.textContent = 'Upload TXT using toolbar above';
+                    globalPromptTitle.textContent = 'Upload TXT File';
                 } else {
                     // No files - show generic prompt, keep stats visible with placeholders
                     globalUploadPrompt.style.display = 'block';
                     circuitAssignmentStats.style.display = 'block';
                     bohStats.style.display = 'block';
                     globalPromptIcon.textContent = '🔴🟢';
-                    globalPromptTitle.textContent = 'Upload MVR & TXT using toolbar above';
+                    globalPromptTitle.textContent = 'Upload MVR & TXT';
                 }
 
                 // Update Universe Assignment stats if data mode is selected
@@ -8358,8 +8254,6 @@
             // ============================================
             // Initialize
             // ============================================
-            lastSnapshot = captureSnapshot();
-            updateUndoRedoButtons();
             restoreThemePreference();
             updateStats();
             updateTSVDependentUI(); // Show TSV prompts on initial load
@@ -8372,6 +8266,5 @@
                 updateFileChecklist(uploadedFiles, true);
             }
         </script>
-        <div id="toast" class="toast"></div>
     </body>
 </html>
