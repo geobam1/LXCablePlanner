@@ -55,13 +55,24 @@ Claude is the stronger tool for these tasks:
 
 ---
 
+## When to Defer to Codex
+
+Hand off to Codex for tasks where it is stronger:
+
+- Quick inline edits (single-line fixes, typos) because it provides immediate local diffs.
+- Iterative code completion because it excels at autocomplete-style drafting while typing.
+- Local execution and verification because it can run commands and capture verbatim output.
+- Targeted file changes because it applies precise patches with minimal diffs.
+
+---
+
 ## Handoff Protocol
 
 When finishing a session or handing off to Codex:
 1. Commit all changes with clear messages
-2. State current task status and any pending work
-3. List files that were modified
-4. Note any issues encountered
+2. State what was modified and why
+3. Note any tests run or issues encountered
+4. List pending work for Codex to continue
 
 ---
 

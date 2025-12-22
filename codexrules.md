@@ -55,8 +55,8 @@ Hand off to Claude for tasks where it is stronger:
 When finishing a session or handing off to Claude:
 1. Save all file changes
 2. State what was modified and why
-3. Note any tests run and their results
-4. List pending work or known issues
+3. Note any tests run or issues encountered
+4. List pending work for Claude to continue
 
 ---
 
