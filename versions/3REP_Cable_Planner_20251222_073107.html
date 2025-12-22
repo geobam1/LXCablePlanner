@@ -1386,7 +1386,6 @@
                                     <div class="empty-state">
                                         <div class="empty-state-icon">⚡</div>
                                         <div class="empty-state-text">No power distributions yet</div>
-                                        <button class="btn btn-secondary" onclick="addPD()" style="margin-top: 8px;">+ Add Power Distribution</button>
                                     </div>
                                 </div>
 
@@ -1440,7 +1439,6 @@
                                     <div class="empty-state">
                                         <div class="empty-state-icon">🌐</div>
                                         <div class="empty-state-text">No data distributions yet</div>
-                                        <button class="btn btn-secondary" onclick="addDD()" style="margin-top: 8px;">+ Add Data Distribution</button>
                                     </div>
                                 </div>
 
@@ -1459,8 +1457,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Mode Selection (shown when no mode selected) -->
-                                <div id="dataModeSelection" style="margin-top: 16px; display: block;">
+                                <!-- Mode Selection (shown when no mode selected) - Shown when TSV is loaded -->
+                                <div id="dataModeSelection" style="margin-top: 16px; display: none;">
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                                         <button class="mode-choice-btn" id="mode-network" onclick="selectDataMode('network')" style="padding: 16px; border: 2px solid var(--border); border-radius: 8px; background: var(--card); cursor: pointer; text-align: left; transition: all 0.2s;">
                                             <div style="font-size: 24px; margin-bottom: 8px;">🧠💻</div>
@@ -1473,7 +1471,6 @@
                                             <div style="font-size: 11px; color: var(--text-soft);">Direct DMX 5-pin</div>
                                         </button>
                                     </div>
-                                    <div style="font-size: 11px; color: var(--text-soft);">Device presets require TSV; you can still choose a mode now.</div>
                                 </div>
 
                                 <!-- DD Device Selection - Shown when mode is selected and TSV is loaded -->
@@ -1640,9 +1637,7 @@
                                 <div id="noPowerConnections" class="empty-state">
                                     <div class="empty-state-icon">⚡</div>
                                     <div class="empty-state-text">No power distributions configured yet</div>
-                                    <div class="empty-state-hint">
-                                        <button class="btn btn-secondary" onclick="openSection('boh')">Go to BOH → Power Distributions</button>
-                                    </div>
+                                    <div class="empty-state-hint">Add power distributions in BOH section</div>
                                 </div>
                             </div>
 
@@ -1651,9 +1646,7 @@
                                 <div id="noDataConnections" class="empty-state">
                                     <div class="empty-state-icon">🌐</div>
                                     <div class="empty-state-text">No data distributions configured yet</div>
-                                    <div class="empty-state-hint">
-                                        <button class="btn btn-secondary" onclick="openSection('boh')">Go to BOH → Data Distributions</button>
-                                    </div>
+                                    <div class="empty-state-hint">Add data distributions in BOH section</div>
                                 </div>
                             </div>
                         </div>
@@ -3317,12 +3310,17 @@
 
                 // Data Distribution presets (requires TSV)
                 const ddTSVPrompt = $('ddTSVPrompt');
+                const dataModeSelection = $('dataModeSelection');
 
                 if (ddTSVPrompt) {
                     if (hasTSV) {
                         ddTSVPrompt.style.display = 'none';
+                        // dataModeSelection visibility is controlled by other logic
                     } else {
                         ddTSVPrompt.style.display = 'block';
+                        if (dataModeSelection) {
+                            dataModeSelection.style.display = 'none';
+                        }
                     }
                 }
 
