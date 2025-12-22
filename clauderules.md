@@ -1,72 +1,77 @@
 # Claude CLI Rules for LXCablePlanner
 
-Use Claude for tasks where its architectural strengths apply, regardless of deployment context.
+This document defines when and how to use Claude CLI, focusing on task suitability rather than deployment details.
 
 ---
 
-## When to Use Claude
+## When to Use Claude CLI
 
-### 1. Git Operations
-**Why:** Native `gh` CLI integration with automatic commit formatting and PR workflows.
-- Commits, pushes, pulls, branch management
+Claude is the stronger tool for these tasks:
+
+### 1. Git Workflow & PRs
+**Why Claude is better:** Native workflow integration with commit formatting and PR tooling.
+- Commit, push, pull, and branch operations
 - Creating well-formatted commit messages
-- Pull request creation and management
-- Merge conflict resolution with full context
+- Managing pull requests via `gh` CLI
+- Resolving merge conflicts with full context
 
-### 2. Codebase Exploration
-**Why:** Specialized search agents with parallel file reading and cross-file reasoning.
+### 2. Codebase Exploration & Understanding
+**Why Claude is better:** Strong cross-file reasoning for “how does X work?” questions.
 - Finding where functionality is implemented
-- Understanding code flow across files
-- Answering "how does X work?" questions
+- Understanding code flow across multiple files
 - Tracing dependencies and imports
 
-### 3. Multi-Step Planning
-**Why:** Built-in task tracking (TodoWrite) and ability to break down complex work.
-- Feature implementations spanning multiple files
-- Refactoring with interdependent changes
-- Debugging across components
+### 3. Complex Multi-Step Tasks
+**Why Claude is better:** Built-in task planning and progress tracking.
+- Feature implementations requiring multiple files
+- Refactors with interdependent changes
+- Debugging issues that span components
 
 ### 4. Code Review & Analysis
-**Why:** Large context window enables reviewing entire files with deep reasoning.
+**Why Claude is better:** Long-context reasoning across entire features.
 - Reviewing changes for bugs or issues
 - Security analysis
-- Architectural improvements
-- Edge case identification
+- Identifying edge cases
 
-### 5. Documentation
-**Why:** Strong natural language generation for structured long-form writing.
-- README files
-- Code explanations
-- Technical documentation
+### 5. Documentation & Explanations
+**Why Claude is better:** Strong long-form, structured writing.
+- Writing or updating README files
+- Explaining complex code sections
+- Creating technical documentation
 
 ### 6. Interactive Problem Solving
-**Why:** Can ask clarifying questions and adapt approach mid-task.
-- Ambiguous requirements
-- User preference decisions
-- Exploratory debugging
+**Why Claude is better:** Iterative clarifications and adaptive approach.
+- Ambiguous requirements that need clarification
+- Tasks where user preferences matter
 
-### 7. Web Research
-**Why:** Built-in web search and URL fetching.
-- API documentation lookup
-- Error solutions
-- Best practices research
+### 7. Web Research & External Resources
+**Why Claude is better:** Can fetch and summarize external sources.
+- Looking up API documentation
+- Finding solutions to errors
+- Researching best practices
 
 ---
 
 ## When to Defer to Codex
 
-- Quick focused edits (single-line fixes, typos)
-- Iterative code drafting with rapid feedback
-- Tasks already in progress in Codex session
+Hand off to Codex for tasks where it is stronger:
+
+- Quick inline edits (single-line fixes, typos) because it excels at fast, minimal diffs.
+- Iterative drafting because it is optimized for low-latency completions.
+- Targeted file changes because it applies precise patches when the edit is already defined.
+- Simple known searches because it can run fast exact-match queries locally.
+
+Note: Local command execution follows the active tool and is not the deciding factor.
 
 ---
 
 ## Handoff Protocol
 
-When handing off to Codex:
+When finishing a session or handing off to Codex:
 1. Commit all changes with clear messages
 2. State what was modified and why
-3. List pending work
+3. Note any tests run or issues encountered
+4. List pending work for Codex to continue
 
 ---
 

@@ -1,50 +1,63 @@
 # Codex Rules for LXCablePlanner
 
-Use Codex for tasks where its architectural strengths apply, regardless of deployment context.
+This document defines when and how to use Codex, focusing on task suitability rather than deployment details.
 
 ---
 
 ## When to Use Codex
 
-### 1. Quick Focused Edits
-**Why:** Optimized for fast, minimal-diff changes with rapid feedback.
+Codex is the stronger tool for these tasks:
+
+### 1. Quick Inline Edits
+**Why Codex is better:** Optimized for fast, surgical edits with minimal diffs.
 - Single-line or few-line fixes
 - Typo corrections
-- Variable renames
-- Small function additions/removals
+- Variable renames within a file
+- Adding/removing a single function or block
 
-### 2. Iterative Code Drafting
-**Why:** Low-latency responses suited to back-and-forth refinement.
+### 2. Iterative Drafting
+**Why Codex is better:** Low-latency completions while actively writing code.
 - Completing partially written functions
-- Generating boilerplate
-- Pattern-based suggestions
-- Rapid prototyping cycles
+- Generating boilerplate as you type
+- Suggesting next lines based on local context
 
-### 3. Continuation of Active Session
-**Why:** Avoids context-switching overhead.
-- Tasks related to work already in progress
-- Follow-up edits to recent changes
-- Immediate fixes to just-written code
+### 3. Targeted File Changes
+**Why Codex is better:** Precise patch application when the exact edit is already defined.
+- Editing a specific known location
+- Applying a focused fix to a single file
+- Making changes with minimal diffs
+
+### 4. Simple Known Searches
+**Why Codex is better:** Fast exact-match queries when you already know the identifier or string.
+- Locating a specific function or variable by name
+- Finding a known string or UI label
+- Quick exact-match grep with `rg`
 
 ---
 
-## When to Defer to Claude
+## When to Defer to Claude CLI
 
-- Git operations (commits, PRs, branches) — native workflow integration
-- Codebase exploration ("how does X work?") — specialized search agents
-- Multi-step tasks requiring planning — built-in task tracking
-- Code review and analysis — large context window reasoning
-- Documentation and explanations — structured long-form writing
-- Web research and external lookups — built-in fetch/search
+Hand off to Claude for tasks where it is stronger:
+
+- Git operations and PRs because of workflow integration and commit formatting.
+- Exploratory codebase searches because it excels at cross-file reasoning.
+- Multi-step tasks requiring planning because it provides structured task tracking.
+- Code review and analysis because it reasons across large contexts.
+- Documentation and explanations because it produces strong long-form output.
+- Web research and external lookups because it can fetch and summarize sources.
+- Interactive problem solving because it adapts through clarifying questions.
+
+Note: Local command execution follows the active tool and is not the deciding factor.
 
 ---
 
 ## Handoff Protocol
 
-When handing off to Claude:
-1. Save all file changes
+When finishing a session or handing off to Claude:
+1. Commit all changes with clear messages
 2. State what was modified and why
-3. List pending work
+3. Note any tests run or issues encountered
+4. List pending work for Claude to continue
 
 ---
 
