@@ -1,85 +1,72 @@
 # Claude CLI Rules for LXCablePlanner
 
-This document defines when and how to use Claude CLI, focusing on tasks where it excels over Codex.
+Use Claude for tasks where its architectural strengths apply, regardless of deployment context.
 
 ---
 
-## When to Use Claude CLI
-
-Claude is the stronger tool for these tasks:
+## When to Use Claude
 
 ### 1. Git Operations
-**Why Claude is better:** Native git integration with automatic commit formatting, branch management, and PR creation built-in.
-- Commit, push, pull, and branch operations
+**Why:** Native `gh` CLI integration with automatic commit formatting and PR workflows.
+- Commits, pushes, pulls, branch management
 - Creating well-formatted commit messages
-- Managing pull requests via `gh` CLI
-- Resolving merge conflicts with full context
+- Pull request creation and management
+- Merge conflict resolution with full context
 
-### 2. Codebase Exploration & Understanding
-**Why Claude is better:** Specialized search agents, parallel file reading, and pattern matching across large codebases.
+### 2. Codebase Exploration
+**Why:** Specialized search agents with parallel file reading and cross-file reasoning.
 - Finding where functionality is implemented
-- Understanding code flow across multiple files
+- Understanding code flow across files
 - Answering "how does X work?" questions
 - Tracing dependencies and imports
 
-### 3. Complex Multi-Step Tasks
-**Why Claude is better:** Built-in task planning (TodoWrite), progress tracking, and ability to break down complex work.
-- Feature implementations requiring multiple files
-- Refactoring with many interdependent changes
-- Debugging issues that span multiple components
+### 3. Multi-Step Planning
+**Why:** Built-in task tracking (TodoWrite) and ability to break down complex work.
+- Feature implementations spanning multiple files
+- Refactoring with interdependent changes
+- Debugging across components
 
 ### 4. Code Review & Analysis
-**Why Claude is better:** Long context window allows reviewing entire files/features at once with deep reasoning.
+**Why:** Large context window enables reviewing entire files with deep reasoning.
 - Reviewing changes for bugs or issues
 - Security analysis
-- Suggesting architectural improvements
-- Identifying edge cases
+- Architectural improvements
+- Edge case identification
 
-### 5. Documentation & Explanations
-**Why Claude is better:** Strong natural language generation and ability to understand context deeply.
-- Writing or updating README files
-- Explaining complex code sections
-- Creating technical documentation
+### 5. Documentation
+**Why:** Strong natural language generation for structured long-form writing.
+- README files
+- Code explanations
+- Technical documentation
 
 ### 6. Interactive Problem Solving
-**Why Claude is better:** Can ask clarifying questions mid-task and adapt approach based on answers.
-- Ambiguous requirements that need clarification
-- Tasks where user preferences matter
+**Why:** Can ask clarifying questions and adapt approach mid-task.
+- Ambiguous requirements
+- User preference decisions
 - Exploratory debugging
 
-### 7. Web Research & External Resources
-**Why Claude is better:** Built-in web search and URL fetching capabilities.
-- Looking up API documentation
-- Finding solutions to errors
-- Researching best practices
-
-### 8. Direct Local System Access
-**Why Claude is better:** Operates directly on your filesystem and runs commands on your actual system.
-- Editing files in place without sandboxing
-- Running builds, tests, and scripts with real system access
-- Making changes that persist immediately
-- Full access to local toolchain and environment
+### 7. Web Research
+**Why:** Built-in web search and URL fetching.
+- API documentation lookup
+- Error solutions
+- Best practices research
 
 ---
 
 ## When to Defer to Codex
 
-Hand off to Codex for tasks where it is stronger:
-
-- IDE-integrated editing (Copilot) because it's embedded in your editor with cursor-aware context.
-- Sandboxed code execution because it can run experimental code safely without affecting your system.
-- Real-time autocomplete because it's optimized for low-latency typing-flow completions.
-- Rapid prototyping in chat because ChatGPT code interpreter executes and iterates instantly.
+- Quick focused edits (single-line fixes, typos)
+- Iterative code drafting with rapid feedback
+- Tasks already in progress in Codex session
 
 ---
 
 ## Handoff Protocol
 
-When finishing a session or handing off to Codex:
+When handing off to Codex:
 1. Commit all changes with clear messages
 2. State what was modified and why
-3. Note any tests run or issues encountered
-4. List pending work for Codex to continue
+3. List pending work
 
 ---
 

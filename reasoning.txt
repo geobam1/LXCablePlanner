@@ -49,6 +49,53 @@ Rather than describing deployment contexts (sandboxed vs local), the rules shoul
 
 - I agree the current rules overclaim deployment differences that don't apply to CLI-vs-CLI usage.
 - Suggest we rewrite both files around **task suitability** rather than **execution environment**.
-- Awaiting user confirmation to proceed with this approach.
+
+---
+
+9) Full explanation of the task-based approach — Claude
+
+The original rules made a fundamental error: they described **where** each tool runs rather than **what** each tool is good at. This caused confusion because:
+
+a) **Deployment varies by user setup**
+   - Some users run Claude CLI locally, Codex in browser
+   - Some users run Codex CLI locally, Claude via API
+   - Some users run both as CLI tools side-by-side
+   - Rules based on "local vs sandboxed" break when the setup changes
+
+b) **Capabilities are intrinsic, deployment is not**
+   - Claude's strength at git operations comes from its native `gh` integration and commit formatting — this is true regardless of where it runs
+   - Codex's strength at iterative completion comes from its optimization for low-latency responses — this is true in any context
+   - These are architectural strengths, not deployment artifacts
+
+c) **Task routing should be deterministic**
+   - "Use Claude for git commits" is actionable
+   - "Use Claude because it has local access" is conditional and breaks when both tools have local access
+
+**The corrected model:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TASK ARRIVES                             │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Is it git/PR/branch work?           → Claude               │
+│  Is it codebase exploration?         → Claude               │
+│  Is it multi-step with planning?     → Claude               │
+│  Is it code review/analysis?         → Claude               │
+│  Is it documentation?                → Claude               │
+│  Is it web research?                 → Claude               │
+│  Is it a quick focused edit?         → Codex                │
+│  Is it iterative drafting?           → Codex                │
+│  Is it test/build execution?         → Whichever is active  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+This model works regardless of whether Claude or Codex is running locally, in a sandbox, or in an IDE.
+
+10) Proceeding with updates — Claude
+
+User has confirmed. I will now update both clauderules.md and codexrules.md to reflect task-based routing rather than deployment-based assumptions.
 
 — Claude
