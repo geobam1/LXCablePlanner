@@ -53,16 +53,23 @@ Claude is the stronger tool for these tasks:
 - Finding solutions to errors
 - Researching best practices
 
+### 8. Direct Local System Access
+**Why Claude is better:** Operates directly on your filesystem and runs commands on your actual system.
+- Editing files in place without sandboxing
+- Running builds, tests, and scripts with real system access
+- Making changes that persist immediately
+- Full access to local toolchain and environment
+
 ---
 
 ## When to Defer to Codex
 
 Hand off to Codex for tasks where it is stronger:
 
-- Quick inline edits (single-line fixes, typos) because it provides immediate local diffs.
-- Iterative code completion because it excels at autocomplete-style drafting while typing.
-- Local execution and verification because it can run commands and capture verbatim output.
-- Targeted file changes because it applies precise patches with minimal diffs.
+- IDE-integrated editing (Copilot) because it's embedded in your editor with cursor-aware context.
+- Sandboxed code execution because it can run experimental code safely without affecting your system.
+- Real-time autocomplete because it's optimized for low-latency typing-flow completions.
+- Rapid prototyping in chat because ChatGPT code interpreter executes and iterates instantly.
 
 ---
 
