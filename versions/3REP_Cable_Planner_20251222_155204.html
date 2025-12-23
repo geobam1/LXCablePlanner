@@ -1308,9 +1308,6 @@
                             </div>
                             <div class="file-check-item" id="checkTSV">
                                 <span class="check-box">☐</span> Inventory Database (TSV)
-                                <button class="btn btn-sm" id="tsvMappingBtn" onclick="openFixtureMapModal()" style="display: none; margin-left: 8px; padding: 2px 8px; font-size: 10px;">
-                                    <span class="icon" style="font-size: 10px;">🔗</span> Mappings
-                                </button>
                             </div>
                             <div class="file-check-item" id="checkJSON">
                                 <span class="check-box">☐</span> Export Project (JSON)
@@ -2183,25 +2180,6 @@
             </div>
         </div>
 
-        <!-- Fixture Type Mapping Approval Modal -->
-        <div class="modal-overlay" id="fixtureMapModal">
-            <div class="modal" style="max-width: 800px;">
-                <div class="modal-header">🧩 Match Fixture Types to Inventory</div>
-                <div class="modal-body">
-                    <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 12px;">
-                        Review suggested matches (score ≥ 0.2). Choose a match or skip to keep unmatched.
-                    </div>
-                    <div id="fixtureMapList" style="display: flex; flex-direction: column; gap: 12px; max-height: 360px; overflow-y: auto;">
-                        <!-- Mapping rows injected here -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn" onclick="closeFixtureMapModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="applyFixtureMapSelections()">Apply & Remember</button>
-                </div>
-            </div>
-        </div>
-
         <script>
             // ============================================
             // Global State
@@ -2230,10 +2208,7 @@
                 gearList: [],
                 lastUpdated: null,
                 activeSection: null, // 'boh', 'foh', 'connections', 'export'
-                customFixtures: [], // User-added custom fixtures [{name, powerIn, powerOut, voltage, wattage}]
-                fixtureTypeMap: {}, // TXT/MVR fixture type -> TSV mapping
-                fixtureTypeSuggestions: {}, // Suggested TSV matches awaiting manual approval
-                sourceFiles: {} // Optional: raw MVR/TXT/TSV payloads for JSON export
+                customFixtures: [] // User-added custom fixtures [{name, powerIn, powerOut, voltage, wattage}]
             };
 
             // Default Fixture Database - Common fixtures with power connector information
@@ -2464,20 +2439,11 @@
                 showToast(`Redone: ${entry.label}`);
             }
 
-            function buildSavePayload() {
-                const dataToSave = { ...projectData };
-                dataToSave.sourceFiles = {
-                    mvr: uploadedFiles.mvr || null,
-                    txt: uploadedFiles.txt || null,
-                    tsv: uploadedFiles.tsv || null
-                };
-                return dataToSave;
-            }
-
             function autoSaveProject() {
                 try {
-                    // Create a copy of projectData including source files
-                    const dataToSave = buildSavePayload();
+                    // Create a copy of projectData excluding TSV reference
+                    const dataToSave = { ...projectData };
+                    delete dataToSave.tsvReference;
 
                     // Save to localStorage
                     localStorage.setItem('network_builder_autosave', JSON.stringify(dataToSave));
@@ -2998,7 +2964,6 @@
                 if (fileType === 'tsv') {
                     projectData.tsvReference = newData;
                     updateTSVDependentUI();
-                    applyTSVMappingToFixtures(projectData.fixtures, newData);
                 }
 
                 // Update checklist
@@ -3399,10 +3364,6 @@
                 // Update TSV-dependent UI elements
                 updateTSVDependentUI();
 
-                if (uploadedFiles.tsv) {
-                    applyTSVMappingToFixtures(projectData.fixtures, uploadedFiles.tsv);
-                }
-
                 // Refresh stats for partial file loads (e.g., TXT only)
                 updateStats();
             }
@@ -3518,7 +3479,6 @@
                 const checkJSON = $("checkJSON");
                 const jsonDownloadBtn = $("jsonDownloadBtn");
                 const jsonAutoSaveMsg = $("jsonAutoSaveMsg");
-                const tsvMappingBtn = $("tsvMappingBtn");
 
                 // Check if all required elements exist
                 if (!checkMVR || !checkTXT || !checkTSV || !checkJSON) {
@@ -3561,19 +3521,10 @@
                     checkTSV.classList.add("loaded");
                     if (tsvCheckbox) tsvCheckbox.textContent = "☑";
                     console.log("TSV checkbox checked");
-                    if (tsvMappingBtn) {
-                        const pendingCount = Object.keys(projectData.fixtureTypeSuggestions || {}).length;
-                        tsvMappingBtn.style.display = "inline-block";
-                        tsvMappingBtn.innerHTML = `<span class=\"icon\" style=\"font-size: 10px;\">🔗</span> Mappings${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`;
-                    }
                 } else {
                     checkTSV.classList.remove("loaded");
                     if (tsvCheckbox) tsvCheckbox.textContent = "☐";
                     console.log("TSV checkbox unchecked");
-                    if (tsvMappingBtn) {
-                        tsvMappingBtn.style.display = "none";
-                        tsvMappingBtn.innerHTML = '<span class="icon" style="font-size: 10px;">🔗</span> Mappings';
-                    }
                 }
 
                 // Update JSON checkbox
@@ -3672,7 +3623,6 @@
                 const text = await file.text();
                 const lines = text.split('\n');
                 const data = [];
-                let headers = [];
 
                 // Parse TSV format
                 for (let i = 0; i < lines.length; i++) {
@@ -3682,226 +3632,17 @@
                     const columns = line.split('\t');
                     if (i === 0) {
                         // First line might be headers
-                        headers = columns.map(header => header.trim());
+                        data.headers = columns;
                     } else {
                         data.push(columns);
                     }
                 }
 
-                const items = data.map(row => {
-                    const item = {};
-                    headers.forEach((header, index) => {
-                        item[header] = row[index] ? row[index].trim() : '';
-                    });
-                    return item;
-                });
-
                 return {
                     fileName: file.name,
-                    headers: headers,
                     data: data,
-                    items: items,
                     // Don't store raw text to keep it external
                 };
-            }
-
-            function normalizeMatchString(value) {
-                if (!value) return '';
-                return value
-                    .toLowerCase()
-                    .replace(/[^a-z0-9\\s]/g, ' ')
-                    .replace(/\\s+/g, ' ')
-                    .trim();
-            }
-
-            function tokenizeMatchString(value) {
-                const normalized = normalizeMatchString(value);
-                if (!normalized) return [];
-                return normalized.split(' ').filter(Boolean);
-            }
-
-            function scoreFixtureMatch(txtName, tsvItem) {
-                const nameTokens = new Set(tokenizeMatchString(txtName));
-                const tsvName = tsvItem?.Name || '';
-                const tsvManufacturer = tsvItem?.Manufacturer || '';
-                const tsvVariant = tsvItem?.Variant || '';
-                const tsvTokens = new Set([
-                    ...tokenizeMatchString(tsvName),
-                    ...tokenizeMatchString(tsvManufacturer),
-                    ...tokenizeMatchString(tsvVariant)
-                ]);
-
-                if (nameTokens.size === 0 || tsvTokens.size === 0) return 0;
-
-                let overlap = 0;
-                nameTokens.forEach(token => {
-                    if (tsvTokens.has(token)) overlap += 1;
-                });
-
-                const overlapScore = overlap / Math.max(nameTokens.size, 1);
-                const manufacturerBonus = tsvManufacturer &&
-                    tokenizeMatchString(txtName).includes(normalizeMatchString(tsvManufacturer))
-                    ? 0.15
-                    : 0;
-
-                return Math.min(1, overlapScore + manufacturerBonus);
-            }
-
-            function getFixtureTypeKey(fixture) {
-                return fixture['Instrument Type'] ||
-                    fixture['Fixture Type'] ||
-                    fixture['Device Type'] ||
-                    '';
-            }
-
-            function applyTSVMappingToFixtures(fixtures, tsvData) {
-                if (!Array.isArray(fixtures) || !tsvData || !Array.isArray(tsvData.items)) return;
-
-                const mapping = projectData.fixtureTypeMap || {};
-                const unmatched = new Set();
-                const suggestions = projectData.fixtureTypeSuggestions || {};
-
-                fixtures.forEach(fixture => {
-                    const fixtureType = getFixtureTypeKey(fixture);
-                    if (!fixtureType) return;
-
-                    const mapped = mapping[fixtureType];
-                    if (mapped) {
-                        fixture.tsvMatch = mapped;
-                        return;
-                    }
-
-                    let best = null;
-                    let bestScore = 0;
-                    let secondBest = 0;
-                    const ranked = [];
-
-                    tsvData.items.forEach(item => {
-                        const score = scoreFixtureMatch(fixtureType, item);
-                        if (score > 0) {
-                            ranked.push({ item, score });
-                        }
-                        if (score > bestScore) {
-                            secondBest = bestScore;
-                            bestScore = score;
-                            best = item;
-                        } else if (score > secondBest) {
-                            secondBest = score;
-                        }
-                    });
-
-                    if (best && bestScore >= 0.5 && (bestScore - secondBest) >= 0.1) {
-                        const mappedEntry = {
-                            DeviceID: best.DeviceID || '',
-                            Name: best.Name || '',
-                            Manufacturer: best.Manufacturer || '',
-                            Variant: best.Variant || '',
-                            DeviceType: best.DeviceType || ''
-                        };
-                        mapping[fixtureType] = mappedEntry;
-                        fixture.tsvMatch = mappedEntry;
-                    } else if (best && bestScore >= 0.2) {
-                        ranked.sort((a, b) => b.score - a.score);
-                        suggestions[fixtureType] = ranked.slice(0, 3).map(entry => ({
-                            score: Number(entry.score.toFixed(2)),
-                            DeviceID: entry.item.DeviceID || '',
-                            Name: entry.item.Name || '',
-                            Manufacturer: entry.item.Manufacturer || '',
-                            Variant: entry.item.Variant || '',
-                            DeviceType: entry.item.DeviceType || ''
-                        }));
-                        unmatched.add(fixtureType);
-                    } else {
-                        unmatched.add(fixtureType);
-                    }
-                });
-
-                projectData.fixtureTypeMap = mapping;
-                projectData.fixtureTypeSuggestions = suggestions;
-                projectData.unmappedFixtureTypes = Array.from(unmatched);
-
-                if (Object.keys(suggestions).length > 0) {
-                    openFixtureMapModal();
-                }
-            }
-
-            function openFixtureMapModal() {
-                const modal = $('fixtureMapModal');
-                const list = $('fixtureMapList');
-                if (!modal || !list) return;
-
-                const suggestions = projectData.fixtureTypeSuggestions || {};
-                const fixtureTypes = Object.keys(suggestions);
-
-                if (fixtureTypes.length === 0) return;
-
-                list.innerHTML = '';
-                fixtureTypes.forEach((fixtureType, idx) => {
-                    const suggestionList = suggestions[fixtureType] || [];
-                    const groupId = `fixtureMap_${idx}`;
-                    const optionsHtml = suggestionList.map((entry, optionIdx) => {
-                        const label = `${entry.Manufacturer || ''} ${entry.Name || ''} ${entry.Variant || ''}`.trim();
-                        return `
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 6px;">
-                                <input type="radio" name="${groupId}" value="${optionIdx}">
-                                <span>${label || 'Unnamed'} <span style="color: var(--text-soft);">(${entry.score})</span></span>
-                            </label>
-                        `;
-                    }).join('');
-
-                    list.insertAdjacentHTML('beforeend', `
-                        <div style="padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);">
-                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px;">${fixtureType}</div>
-                            ${optionsHtml}
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                                <input type="radio" name="${groupId}" value="skip" checked>
-                                <span>Skip (no match)</span>
-                            </label>
-                        </div>
-                    `);
-                });
-
-                modal.classList.add('active');
-            }
-
-            function closeFixtureMapModal() {
-                const modal = $('fixtureMapModal');
-                if (modal) modal.classList.remove('active');
-            }
-
-            function applyFixtureMapSelections() {
-                const suggestions = projectData.fixtureTypeSuggestions || {};
-                const fixtureTypes = Object.keys(suggestions);
-                if (fixtureTypes.length === 0) {
-                    closeFixtureMapModal();
-                    return;
-                }
-
-                fixtureTypes.forEach((fixtureType, idx) => {
-                    const groupId = `fixtureMap_${idx}`;
-                    const selected = document.querySelector(`input[name="${groupId}"]:checked`);
-                    if (!selected || selected.value === 'skip') return;
-
-                    const choiceIdx = parseInt(selected.value, 10);
-                    const entry = (suggestions[fixtureType] || [])[choiceIdx];
-                    if (!entry) return;
-
-                    projectData.fixtureTypeMap[fixtureType] = {
-                        DeviceID: entry.DeviceID || '',
-                        Name: entry.Name || '',
-                        Manufacturer: entry.Manufacturer || '',
-                        Variant: entry.Variant || '',
-                        DeviceType: entry.DeviceType || ''
-                    };
-                });
-
-                projectData.fixtureTypeSuggestions = {};
-                applyTSVMappingToFixtures(projectData.fixtures, uploadedFiles.tsv);
-                renderConnections();
-                updateStats();
-                markProjectUpdated();
-                updateFileChecklist(uploadedFiles, true);
-                closeFixtureMapModal();
             }
 
             function mergeFileData(fileData) {
@@ -3923,13 +3664,8 @@
                     // Build lookup maps for efficient matching
                     const txtByPosition = new Map();
                     const txtByFixtureId = new Map();
-                    const txtByUID = new Map();
 
                     txtFixtures.forEach(txtFix => {
-                        const uidValue = txtFix.__UID || txtFix.UID || txtFix.UUID;
-                        if (uidValue) {
-                            txtByUID.set(String(uidValue).trim(), txtFix);
-                        }
                         if (txtFix.Position) {
                             txtByPosition.set(txtFix.Position.trim().toLowerCase(), txtFix);
                         }
@@ -3941,15 +3677,9 @@
                     // Merge each MVR fixture with matching TXT fixture
                     mvrFixtures.forEach(mvrFix => {
                         let txtMatch = null;
-                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
 
-                        // Try to match by UID first
-                        if (mvrUID) {
-                            txtMatch = txtByUID.get(String(mvrUID).trim());
-                        }
-
-                        // If no match by UID, try Position
-                        if (!txtMatch && mvrFix.Position) {
+                        // Try to match by Position first
+                        if (mvrFix.Position) {
                             txtMatch = txtByPosition.get(mvrFix.Position.trim().toLowerCase());
                         }
 
@@ -3965,11 +3695,6 @@
 
                     // Add any TXT fixtures that didn't match an MVR fixture
                     txtFixtures.forEach(txtFix => {
-                        const uidMatch = (txtFix.__UID || txtFix.UID || txtFix.UUID) &&
-                            mvrFixtures.some(m => {
-                                const mvrUID = m.UUID || m.__UID || m.UID;
-                                return mvrUID && String(mvrUID).trim() === String(txtFix.__UID || txtFix.UID || txtFix.UUID).trim();
-                            });
                         const positionMatch = txtFix.Position &&
                             mvrFixtures.some(m => m.Position &&
                                 m.Position.trim().toLowerCase() === txtFix.Position.trim().toLowerCase());
@@ -3977,7 +3702,7 @@
                             mvrFixtures.some(m => m["Fixture ID"] &&
                                 m["Fixture ID"].trim() === txtFix["Fixture ID"].trim());
 
-                        if (!uidMatch && !positionMatch && !idMatch) {
+                        if (!positionMatch && !idMatch) {
                             mergedFixtures.push({ ...txtFix });
                         }
                     });
@@ -4108,12 +3833,6 @@
                 projectData.showName = data.originalFileName || "Untitled Show";
                 projectData.fixtures = data.fixtures || [];
 
-                if (data.sourceFiles) {
-                    uploadedFiles.mvr = data.sourceFiles.mvr || uploadedFiles.mvr;
-                    uploadedFiles.txt = data.sourceFiles.txt || uploadedFiles.txt;
-                    uploadedFiles.tsv = data.sourceFiles.tsv || uploadedFiles.tsv;
-                }
-
                 // Parse unique MULTs from Circuit Name
                 const multNamesSet = new Set();
                 const universesSet = new Set();
@@ -4154,11 +3873,6 @@
                 exportGearPdfBtn.disabled = false;
                 exportCablePdfBtn.disabled = false;
 
-                // Apply TSV mapping when inventory is available
-                if (uploadedFiles.tsv) {
-                    applyTSVMappingToFixtures(projectData.fixtures, uploadedFiles.tsv);
-                }
-
                 // Recompute assignments and refresh BOH cards after fixture changes
                 autoAssignCircuits();
                 autoAssignUniverses();
@@ -4166,9 +3880,6 @@
                 renderDDs();
                 renderConnections();
                 updateStats();
-
-                updateFileChecklist(uploadedFiles, true);
-                updateTSVDependentUI();
 
                 // Open BOH section
                 openSection('boh');
@@ -8488,8 +8199,11 @@
             exportCablePdfBtn.addEventListener('click', handleExportCablePDF);
 
             function handleSaveProject() {
-                // Create a copy of projectData including source files
-                const dataToSave = buildSavePayload();
+                // Create a copy of projectData excluding TSV reference
+                const dataToSave = { ...projectData };
+
+                // Remove TSV reference - it should NOT be embedded in the output
+                delete dataToSave.tsvReference;
 
                 // Serialize to JSON
                 const json = JSON.stringify(dataToSave, null, 2);

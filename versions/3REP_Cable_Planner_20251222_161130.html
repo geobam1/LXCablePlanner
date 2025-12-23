@@ -1308,9 +1308,6 @@
                             </div>
                             <div class="file-check-item" id="checkTSV">
                                 <span class="check-box">☐</span> Inventory Database (TSV)
-                                <button class="btn btn-sm" id="tsvMappingBtn" onclick="openFixtureMapModal()" style="display: none; margin-left: 8px; padding: 2px 8px; font-size: 10px;">
-                                    <span class="icon" style="font-size: 10px;">🔗</span> Mappings
-                                </button>
                             </div>
                             <div class="file-check-item" id="checkJSON">
                                 <span class="check-box">☐</span> Export Project (JSON)
@@ -2183,25 +2180,6 @@
             </div>
         </div>
 
-        <!-- Fixture Type Mapping Approval Modal -->
-        <div class="modal-overlay" id="fixtureMapModal">
-            <div class="modal" style="max-width: 800px;">
-                <div class="modal-header">🧩 Match Fixture Types to Inventory</div>
-                <div class="modal-body">
-                    <div style="font-size: 12px; color: var(--text-soft); margin-bottom: 12px;">
-                        Review suggested matches (score ≥ 0.2). Choose a match or skip to keep unmatched.
-                    </div>
-                    <div id="fixtureMapList" style="display: flex; flex-direction: column; gap: 12px; max-height: 360px; overflow-y: auto;">
-                        <!-- Mapping rows injected here -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn" onclick="closeFixtureMapModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="applyFixtureMapSelections()">Apply & Remember</button>
-                </div>
-            </div>
-        </div>
-
         <script>
             // ============================================
             // Global State
@@ -2232,7 +2210,6 @@
                 activeSection: null, // 'boh', 'foh', 'connections', 'export'
                 customFixtures: [], // User-added custom fixtures [{name, powerIn, powerOut, voltage, wattage}]
                 fixtureTypeMap: {}, // TXT/MVR fixture type -> TSV mapping
-                fixtureTypeSuggestions: {}, // Suggested TSV matches awaiting manual approval
                 sourceFiles: {} // Optional: raw MVR/TXT/TSV payloads for JSON export
             };
 
@@ -3518,7 +3495,6 @@
                 const checkJSON = $("checkJSON");
                 const jsonDownloadBtn = $("jsonDownloadBtn");
                 const jsonAutoSaveMsg = $("jsonAutoSaveMsg");
-                const tsvMappingBtn = $("tsvMappingBtn");
 
                 // Check if all required elements exist
                 if (!checkMVR || !checkTXT || !checkTSV || !checkJSON) {
@@ -3561,19 +3537,10 @@
                     checkTSV.classList.add("loaded");
                     if (tsvCheckbox) tsvCheckbox.textContent = "☑";
                     console.log("TSV checkbox checked");
-                    if (tsvMappingBtn) {
-                        const pendingCount = Object.keys(projectData.fixtureTypeSuggestions || {}).length;
-                        tsvMappingBtn.style.display = "inline-block";
-                        tsvMappingBtn.innerHTML = `<span class=\"icon\" style=\"font-size: 10px;\">🔗</span> Mappings${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`;
-                    }
                 } else {
                     checkTSV.classList.remove("loaded");
                     if (tsvCheckbox) tsvCheckbox.textContent = "☐";
                     console.log("TSV checkbox unchecked");
-                    if (tsvMappingBtn) {
-                        tsvMappingBtn.style.display = "none";
-                        tsvMappingBtn.innerHTML = '<span class="icon" style="font-size: 10px;">🔗</span> Mappings';
-                    }
                 }
 
                 // Update JSON checkbox
@@ -3759,7 +3726,6 @@
 
                 const mapping = projectData.fixtureTypeMap || {};
                 const unmatched = new Set();
-                const suggestions = projectData.fixtureTypeSuggestions || {};
 
                 fixtures.forEach(fixture => {
                     const fixtureType = getFixtureTypeKey(fixture);
@@ -3774,13 +3740,9 @@
                     let best = null;
                     let bestScore = 0;
                     let secondBest = 0;
-                    const ranked = [];
 
                     tsvData.items.forEach(item => {
                         const score = scoreFixtureMatch(fixtureType, item);
-                        if (score > 0) {
-                            ranked.push({ item, score });
-                        }
                         if (score > bestScore) {
                             secondBest = bestScore;
                             bestScore = score;
@@ -3800,108 +3762,13 @@
                         };
                         mapping[fixtureType] = mappedEntry;
                         fixture.tsvMatch = mappedEntry;
-                    } else if (best && bestScore >= 0.2) {
-                        ranked.sort((a, b) => b.score - a.score);
-                        suggestions[fixtureType] = ranked.slice(0, 3).map(entry => ({
-                            score: Number(entry.score.toFixed(2)),
-                            DeviceID: entry.item.DeviceID || '',
-                            Name: entry.item.Name || '',
-                            Manufacturer: entry.item.Manufacturer || '',
-                            Variant: entry.item.Variant || '',
-                            DeviceType: entry.item.DeviceType || ''
-                        }));
-                        unmatched.add(fixtureType);
                     } else {
                         unmatched.add(fixtureType);
                     }
                 });
 
                 projectData.fixtureTypeMap = mapping;
-                projectData.fixtureTypeSuggestions = suggestions;
                 projectData.unmappedFixtureTypes = Array.from(unmatched);
-
-                if (Object.keys(suggestions).length > 0) {
-                    openFixtureMapModal();
-                }
-            }
-
-            function openFixtureMapModal() {
-                const modal = $('fixtureMapModal');
-                const list = $('fixtureMapList');
-                if (!modal || !list) return;
-
-                const suggestions = projectData.fixtureTypeSuggestions || {};
-                const fixtureTypes = Object.keys(suggestions);
-
-                if (fixtureTypes.length === 0) return;
-
-                list.innerHTML = '';
-                fixtureTypes.forEach((fixtureType, idx) => {
-                    const suggestionList = suggestions[fixtureType] || [];
-                    const groupId = `fixtureMap_${idx}`;
-                    const optionsHtml = suggestionList.map((entry, optionIdx) => {
-                        const label = `${entry.Manufacturer || ''} ${entry.Name || ''} ${entry.Variant || ''}`.trim();
-                        return `
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 6px;">
-                                <input type="radio" name="${groupId}" value="${optionIdx}">
-                                <span>${label || 'Unnamed'} <span style="color: var(--text-soft);">(${entry.score})</span></span>
-                            </label>
-                        `;
-                    }).join('');
-
-                    list.insertAdjacentHTML('beforeend', `
-                        <div style="padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);">
-                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px;">${fixtureType}</div>
-                            ${optionsHtml}
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                                <input type="radio" name="${groupId}" value="skip" checked>
-                                <span>Skip (no match)</span>
-                            </label>
-                        </div>
-                    `);
-                });
-
-                modal.classList.add('active');
-            }
-
-            function closeFixtureMapModal() {
-                const modal = $('fixtureMapModal');
-                if (modal) modal.classList.remove('active');
-            }
-
-            function applyFixtureMapSelections() {
-                const suggestions = projectData.fixtureTypeSuggestions || {};
-                const fixtureTypes = Object.keys(suggestions);
-                if (fixtureTypes.length === 0) {
-                    closeFixtureMapModal();
-                    return;
-                }
-
-                fixtureTypes.forEach((fixtureType, idx) => {
-                    const groupId = `fixtureMap_${idx}`;
-                    const selected = document.querySelector(`input[name="${groupId}"]:checked`);
-                    if (!selected || selected.value === 'skip') return;
-
-                    const choiceIdx = parseInt(selected.value, 10);
-                    const entry = (suggestions[fixtureType] || [])[choiceIdx];
-                    if (!entry) return;
-
-                    projectData.fixtureTypeMap[fixtureType] = {
-                        DeviceID: entry.DeviceID || '',
-                        Name: entry.Name || '',
-                        Manufacturer: entry.Manufacturer || '',
-                        Variant: entry.Variant || '',
-                        DeviceType: entry.DeviceType || ''
-                    };
-                });
-
-                projectData.fixtureTypeSuggestions = {};
-                applyTSVMappingToFixtures(projectData.fixtures, uploadedFiles.tsv);
-                renderConnections();
-                updateStats();
-                markProjectUpdated();
-                updateFileChecklist(uploadedFiles, true);
-                closeFixtureMapModal();
             }
 
             function mergeFileData(fileData) {
