@@ -621,6 +621,16 @@
             .stat-value {
                 font-weight: 600;
             }
+            .stat-group.power-section {
+                background: rgba(180, 120, 60, 0.15);
+                border-radius: 10px;
+                padding: 10px;
+            }
+            .stat-group.data-section {
+                background: rgba(60, 120, 180, 0.15);
+                border-radius: 10px;
+                padding: 10px;
+            }
 
             /* Pill Styling */
             .pill {
@@ -656,6 +666,92 @@
                 gap: 2px;
                 margin-top: 6px;
                 margin-bottom: 8px;
+            }
+
+            /* Show Analysis Styles */
+            .analysis-section {
+                padding: 10px;
+                background: rgba(148, 163, 184, 0.06);
+                border-radius: 8px;
+                margin-bottom: 10px;
+            }
+            body.dark-theme .analysis-section {
+                background: rgba(148, 163, 184, 0.1);
+            }
+            .analysis-section.power-section {
+                background: rgba(180, 120, 60, 0.12);
+            }
+            .analysis-section.data-section {
+                background: rgba(60, 120, 180, 0.12);
+            }
+
+            .analysis-section-title {
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--text-soft);
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }
+
+            .analysis-metric {
+                display: flex;
+                justify-content: space-between;
+                padding: 4px 0;
+                font-size: 11px;
+            }
+
+            .analysis-warning {
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+                padding: 8px 10px;
+                background: rgba(245, 158, 11, 0.12);
+                border: 1px solid rgba(245, 158, 11, 0.4);
+                border-radius: 6px;
+                font-size: 10px;
+                color: var(--text);
+                margin-top: 8px;
+            }
+            body.dark-theme .analysis-warning {
+                background: rgba(245, 158, 11, 0.15);
+            }
+
+            .analysis-warning-icon {
+                font-size: 14px;
+                flex-shrink: 0;
+            }
+
+            .gear-highlight {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 6px 10px;
+                background: rgba(37, 99, 235, 0.08);
+                border: 1px solid rgba(37, 99, 235, 0.3);
+                border-radius: 6px;
+                font-size: 10px;
+                margin-top: 6px;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+            .gear-highlight:hover {
+                background: rgba(37, 99, 235, 0.15);
+                border-color: var(--blue);
+            }
+            body.dark-theme .gear-highlight {
+                background: rgba(37, 99, 235, 0.12);
+            }
+
+            .gear-highlight-label {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .gear-highlight-qty {
+                font-weight: 600;
+                color: var(--blue);
             }
 
             /* Circuit Layout Styles */
@@ -1291,7 +1387,6 @@
                             <h1>💡 3REP Network Builder</h1>
                             <span>Power & Data Infrastructure Tool</span>
                         </div>
-                    </div>
 
                     <div class="toolbar">
                         <span class="file-status" id="fileStatus">
@@ -1528,29 +1623,7 @@
                                 </div>
                             </div>
 
-                            <!-- Fixture Database -->
-                            <div style="margin-top: 20px;">
-                                <h3 style="font-size: 13px; margin-bottom: 12px;">💡 Fixture Database</h3>
-
-                                <div class="pd-dd-grid" id="fixtureDbGrid">
-                                    <div class="empty-state">
-                                        <div class="empty-state-icon">💡</div>
-                                        <div class="empty-state-text">No custom fixtures yet</div>
-                                    </div>
-                                </div>
-
-                                <!-- Add Custom Fixture Button -->
-                                <div style="margin-top: 16px;">
-                                    <button class="btn btn-primary" onclick="openAddFixtureModal()" style="width: 100%;">
-                                        <span>+ Add Custom Fixture</span>
-                                    </button>
-                                    <div style="margin-top: 8px; font-size: 10px; color: var(--text-soft); text-align: center;">
-                                        ${Object.keys(DEFAULT_FIXTURE_DATABASE).length} default fixtures in database
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-                    </div>
 
                     <!-- FOH Section -->
                     <div class="section-card" id="fohSection">
@@ -1652,7 +1725,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
                     <!-- Connections Section -->
                     <div class="section-card" id="connectionsSection">
@@ -1690,7 +1762,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
                     <!-- Cable Routing Diagram Section -->
                     <div class="section-card" id="diagramSection">
@@ -1745,7 +1816,7 @@
                         </div>
                     </div>
 
-                    <div class="stat-group" id="circuitAssignmentStats" style="display: none;">
+                    <div class="stat-group power-section" id="circuitAssignmentStats" style="display: none;">
                         <div class="stat-group-title">Power Distribution</div>
                             <div class="stat-item">
                                 <span class="stat-label">120V MULTs Total</span>
@@ -1776,9 +1847,8 @@
                                 <span class="stat-value" id="statCircuitsStatus">-</span>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="stat-group" id="universeAssignmentStats" style="display: none;">
+                    <div class="stat-group data-section" id="universeAssignmentStats" style="display: none;">
                         <div class="stat-group-title">Data Distribution</div>
                         <div class="stat-item">
                             <span class="stat-label">Mode</span>
@@ -1823,9 +1893,16 @@
                                 <!-- Universes will be populated here -->
                             </div>
                         </div>
+
+                    <!-- Show Analysis Section -->
+                    <div class="stat-group" id="showAnalysisGroup" style="display: none;">
+                        <div class="stat-group-title">Show Analysis</div>
+                        <div id="showAnalysisContent">
+                            <!-- Analysis content will be populated by renderShowAnalysis() -->
+                        </div>
                     </div>
 
-                    <div class="stat-group" id="detailedStats" style="display: none;">
+                    <div class="stat-group power-section" id="detailedStats" style="display: none;">
                         <div class="stat-group-title">Power</div>
                         <div class="stat-item">
                             <span class="stat-label">Distributions</span>
@@ -1837,11 +1914,11 @@
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Total Load</span>
-                            <span class="stat-value" id="statLoad">0 kW</span>
+                            <span class="stat-value" id="statLoad">0 A</span>
                         </div>
                     </div>
 
-                    <div class="stat-group" id="dataStats" style="display: none;">
+                    <div class="stat-group data-section" id="dataStats" style="display: none;">
                         <div class="stat-group-title">Data</div>
                         <div class="stat-item">
                             <span class="stat-label">Distributions</span>
@@ -2088,58 +2165,6 @@
             </div>
         </div>
 
-        <!-- Add/Edit Fixture Modal -->
-        <div class="modal-overlay" id="fixtureModal">
-            <div class="modal">
-                <div class="modal-header" id="fixtureModalHeader">Add Custom Fixture</div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="form-label">Fixture Name *</label>
-                        <input type="text" class="form-input" id="fixtureName" placeholder="e.g., Chauvet Rogue R1 Spot" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Power Inlet *</label>
-                        <select class="form-select" id="fixturePowerIn">
-                            <option value="">-- Select Power Inlet --</option>
-                            <option value="Edison">Edison</option>
-                            <option value="PowerCon">PowerCon (Blue)</option>
-                            <option value="L6-20">L6-20</option>
-                            <option value="IEC">IEC</option>
-                            <option value="Tru1">Tru1</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Power Outlet</label>
-                        <select class="form-select" id="fixturePowerOut">
-                            <option value="">-- No Power Thru --</option>
-                            <option value="Edison">Edison</option>
-                            <option value="PowerCon">PowerCon (Gray)</option>
-                            <option value="L6-20">L6-20</option>
-                            <option value="IEC">IEC</option>
-                            <option value="Tru1">Tru1</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Voltage *</label>
-                        <select class="form-select" id="fixtureVoltage">
-                            <option value="">-- Select Voltage --</option>
-                            <option value="120V">120V</option>
-                            <option value="208V">208V</option>
-                            <option value="120V/208V">120V / 208V (Auto-ranging)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Wattage *</label>
-                        <input type="number" class="form-input" id="fixtureWattage" placeholder="e.g., 300" min="0" />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn" onclick="closeFixtureModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveFixture()">Save Fixture</button>
-                </div>
-            </div>
-        </div>
-
         <!-- File Conflict / Overwrite Confirmation Modal -->
         <div class="modal-overlay" id="fileConflictModal">
             <div class="modal" style="max-width: 700px;">
@@ -2230,110 +2255,10 @@
                 gearList: [],
                 lastUpdated: null,
                 activeSection: null, // 'boh', 'foh', 'connections', 'export'
-                customFixtures: [], // User-added custom fixtures [{name, powerIn, powerOut, voltage, wattage}]
                 fixtureTypeMap: {}, // TXT/MVR fixture type -> TSV mapping
                 fixtureTypeSuggestions: {}, // Suggested TSV matches awaiting manual approval
                 sourceFiles: {} // Optional: raw MVR/TXT/TSV payloads for JSON export
             };
-
-            // Default Fixture Database - Common fixtures with power connector information
-            const DEFAULT_FIXTURE_DATABASE = {
-                // ETC Source Four Family
-                "Source Four 19": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-                "Source Four 26": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-                "Source Four 36": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-                "Source Four 50": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-                "Source Four PAR": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-                "Source Four Jr": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-                "S4": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 575 },
-
-                // ETC ColorSource Family
-                "ColorSource PAR": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 180 },
-                "ColorSource Linear": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 200 },
-                "ColorSource Spot": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 180 },
-
-                // Chauvet Ovation Family
-                "Ovation E-260WW": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 260 },
-                "Ovation E-910FC": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 200 },
-                "Ovation F-165WW": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 165 },
-                "Ovation F-915VW": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 240 },
-
-                // Chauvet Rogue Family (Moving Lights)
-                "Rogue R1 Spot": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 300 },
-                "Rogue R2 Spot": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 470 },
-                "Rogue R2 Wash": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 380 },
-                "Rogue R3 Spot": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 800 },
-
-                // Elation Artiste Family
-                "Artiste Picasso": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 550 },
-                "Artiste Monet": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 450 },
-
-                // Martin MAC Family
-                "MAC Aura": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 250 },
-                "MAC Viper": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 1000 },
-
-                // Ayrton Family
-                "Ayrton Mistral": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 520 },
-                "Ayrton Khamsin": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "208V", wattage: 700 },
-
-                // Generic PAR Cans
-                "PAR64": { powerIn: "Edison", powerOut: "Edison", voltage: "120V", wattage: 1000 },
-                "PAR56": { powerIn: "Edison", powerOut: "Edison", voltage: "120V", wattage: 500 },
-                "PAR38": { powerIn: "Edison", powerOut: "Edison", voltage: "120V", wattage: 150 },
-
-                // LED PARs
-                "LED PAR": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 150 },
-                "LED Wash": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 200 },
-
-                // Fresnels
-                "6\" Fresnel": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 750 },
-                "8\" Fresnel": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 1000 },
-
-                // Cyc Lights
-                "Cyc Light": { powerIn: "Edison", powerOut: "Edison", voltage: "120V", wattage: 1000 },
-                "LED Cyc": { powerIn: "PowerCon", powerOut: "PowerCon", voltage: "120V", wattage: 300 },
-
-                // Misc
-                "Work Light": { powerIn: "Edison", powerOut: "Edison", voltage: "120V", wattage: 500 },
-                "Practical": { powerIn: "Edison", powerOut: null, voltage: "120V", wattage: 100 }
-            };
-
-            // Function to look up fixture in database (fuzzy match)
-            function lookupFixture(fixtureName) {
-                if (!fixtureName) return null;
-
-                const name = fixtureName.trim();
-
-                // Check custom fixtures first (exact match)
-                const customFixture = projectData.customFixtures.find(f => f.name === name);
-                if (customFixture) {
-                    return customFixture;
-                }
-
-                // Check custom fixtures (fuzzy match)
-                const lowerName = name.toLowerCase();
-                const customFuzzy = projectData.customFixtures.find(f =>
-                    lowerName.includes(f.name.toLowerCase()) || f.name.toLowerCase().includes(lowerName)
-                );
-                if (customFuzzy) {
-                    return customFuzzy;
-                }
-
-                // Exact match in default database
-                if (DEFAULT_FIXTURE_DATABASE[name]) {
-                    return DEFAULT_FIXTURE_DATABASE[name];
-                }
-
-                // Fuzzy match in default database
-                for (const [key, value] of Object.entries(DEFAULT_FIXTURE_DATABASE)) {
-                    if (lowerName.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerName)) {
-                        return value;
-                    }
-                }
-
-                // Not found
-                return null;
-            }
 
             // Console presets
             const consolePresets = {
@@ -2402,7 +2327,6 @@
                 }
                 renderPDs();
                 renderDDs();
-                renderCustomFixtures();
                 renderConsoleDisplay();
                 renderConnections();
                 renderRoutingDiagram();
@@ -2873,8 +2797,7 @@
                     { key: 'fixtures', label: 'Fixtures' },
                     { key: 'powerDistributions', label: 'Power Distributions' },
                     { key: 'dataDistributions', label: 'Data Distributions' },
-                    { key: 'cableList', label: 'Cable List' },
-                    { key: 'customFixtures', label: 'Custom Fixtures' }
+                    { key: 'cableList', label: 'Cable List' }
                 ];
 
                 sections.forEach(section => {
@@ -3391,6 +3314,8 @@
                     projectData.showName = uploadedFiles.txt.fileName || "TXT Import";
 
                     // Trigger all refresh functions
+                    calculateShowAnalysis();
+                    renderShowAnalysis();
                     autoAssignCircuits();
                     autoAssignUniverses();
                     renderPDs();
@@ -3638,7 +3563,8 @@
 
             async function processTXTFile(file) {
                 const text = await file.text();
-                const lines = text.split('\n').filter(line => line.trim());
+                // Handle all line endings: CR (\r), LF (\n), CRLF (\r\n)
+                const lines = text.split(/\r?\n|\r/).filter(line => line.trim());
 
                 if (lines.length === 0) {
                     return {
@@ -3913,6 +3839,35 @@
                 markProjectUpdated();
                 updateFileChecklist(uploadedFiles, true);
                 closeFixtureMapModal();
+            }
+
+            function acceptFixtureSuggestion(fixtureType, suggestionIndex) {
+                const suggestions = projectData.fixtureTypeSuggestions || {};
+                const suggestionList = suggestions[fixtureType] || [];
+                const entry = suggestionList[suggestionIndex];
+                if (!entry) return;
+
+                projectData.fixtureTypeMap[fixtureType] = {
+                    DeviceID: entry.DeviceID || '',
+                    Name: entry.Name || '',
+                    Manufacturer: entry.Manufacturer || '',
+                    Variant: entry.Variant || '',
+                    DeviceType: entry.DeviceType || '',
+                    source: 'tsv-accepted'
+                };
+
+                delete suggestions[fixtureType];
+                projectData.fixtureTypeSuggestions = suggestions;
+                projectData.unmappedFixtureTypes = (projectData.unmappedFixtureTypes || []).filter(t => t !== fixtureType);
+
+                if (uploadedFiles.tsv) {
+                    applyTSVMappingToFixtures(projectData.fixtures, uploadedFiles.tsv);
+                }
+                calculateShowAnalysis();
+                renderShowAnalysis();
+                renderConnections();
+                updateStats();
+                markProjectUpdated();
             }
 
             function mergeFileData(fileData) {
@@ -4252,18 +4207,15 @@
                         if (!fixture) return;
 
                         // Count unique MULT names
-                        const circuitName = fixture['Circuit Name'];
-                        if (circuitName && circuitName !== '-' && circuitName.trim() !== '') {
+                        const circuitName = normalizeCircuitName(fixture['Circuit Name']);
+                        if (circuitName) {
                             multNamesSet.add(circuitName);
                         }
 
                         // Count unique universes
-                        const universeAddress = fixture['Universe/Address'];
-                        if (universeAddress) {
-                            const universePart = universeAddress.split('/')[0];
-                            if (universePart) {
-                                universesSet.add(parseInt(universePart));
-                            }
+                        const universeValue = parseUniverseFromFixture(fixture);
+                        if (universeValue !== null) {
+                            universesSet.add(universeValue);
                         }
                     });
                 }
@@ -4288,6 +4240,7 @@
                 }
 
                 // Recompute assignments and refresh BOH cards after fixture changes
+                calculateShowAnalysis();
                 autoAssignCircuits();
                 autoAssignUniverses();
                 renderPDs();
@@ -4470,7 +4423,7 @@
 
                 projectData.fixtures.forEach(fixture => {
                     const position = fixture['Position'];
-                    const circuitName = fixture['Circuit Name'];
+                    const circuitName = normalizeCircuitName(fixture['Circuit Name']);
                     const universeAddress = fixture['Universe/Address'];
 
                     if (position && position !== '-' && position.trim() !== '') {
@@ -4487,8 +4440,8 @@
                         const posData = positionMap.get(pos);
 
                         // Add circuit
-                        if (circuitName && circuitName !== '-' && circuitName.trim() !== '') {
-                            posData.circuits.add(circuitName.trim());
+                        if (circuitName) {
+                            posData.circuits.add(circuitName);
                         }
 
                         // Add universe
@@ -4509,7 +4462,9 @@
                 projectData.powerDistributions.forEach(pd => {
                     if (pd.assignedCircuits) {
                         pd.assignedCircuits.forEach(circuit => {
-                            circuitToPD.set(circuit.name, pd);
+                            if (circuit.multName) {
+                                circuitToPD.set(circuit.multName, pd);
+                            }
                         });
                     }
                 });
@@ -4556,14 +4511,14 @@
                 positionMap.forEach((posData, position) => {
                     posData.circuits.forEach(circuitName => {
                         const pd = circuitToPD.get(circuitName);
-                        const voltage = /\*208|208V/i.test(circuitName) ? 208 : 120;
+                        const voltage = isCircuit208(circuitName) ? 208 : 120;
 
                         const sourceLocation = posData.powerSource === 'BOH' ? (pd ? pd.name : 'BOH') : posData.powerSource;
 
                         // Get fixtures on this circuit
                         const circuitFixtures = projectData.fixtures.filter(f =>
                             f['Position'] === position &&
-                            f['Circuit Name'] === circuitName
+                            normalizeCircuitName(f['Circuit Name']) === circuitName
                         );
 
                         connections.mults.push({
@@ -4586,7 +4541,7 @@
                 positionMap.forEach((posData, position) => {
                     const voltages = new Set();
                     posData.circuits.forEach(circuitName => {
-                        const voltage = /\*208|208V/i.test(circuitName) ? 208 : 120;
+                        const voltage = isCircuit208(circuitName) ? 208 : 120;
                         voltages.add(voltage);
                     });
 
@@ -4693,34 +4648,22 @@
             function getDeviceConnectors(item, voltage) {
                 if (item.type === 'fixture') {
                     const fixtureName = item.fixtureData['Instrument Type'] || item.fixtureData['Device Type'] || 'Unknown';
+                    // Heuristic fallback (no built-in fixture database)
+                    const fixtureType = fixtureName.toLowerCase();
 
-                    // Look up fixture in database
-                    const fixtureInfo = lookupFixture(fixtureName);
-
-                    if (fixtureInfo) {
-                        // Use database info
-                        return {
-                            inlet: fixtureInfo.powerIn,
-                            outlet: fixtureInfo.powerOut
-                        };
-                    } else {
-                        // Fallback to heuristics if not in database
-                        const fixtureType = fixtureName.toLowerCase();
-
-                        if (voltage === '120V') {
-                            if (fixtureType.includes('source four') || fixtureType.includes('s4')) {
-                                return { inlet: 'Edison', outlet: null }; // No power thru
-                            } else if (fixtureType.includes('led') || fixtureType.includes('moving') || fixtureType.includes('wash')) {
-                                return { inlet: 'PowerCon', outlet: 'PowerCon' };
-                            } else {
-                                return { inlet: 'Edison', outlet: 'Edison' };
-                            }
-                        } else { // 208V
-                            if (fixtureType.includes('led') || fixtureType.includes('moving') || fixtureType.includes('wash')) {
-                                return { inlet: 'PowerCon', outlet: 'PowerCon' };
-                            } else {
-                                return { inlet: 'L6-20', outlet: 'L6-20' };
-                            }
+                    if (voltage === '120V') {
+                        if (fixtureType.includes('source four') || fixtureType.includes('s4')) {
+                            return { inlet: 'Edison', outlet: null }; // No power thru
+                        } else if (fixtureType.includes('led') || fixtureType.includes('moving') || fixtureType.includes('wash')) {
+                            return { inlet: 'PowerCon', outlet: 'PowerCon' };
+                        } else {
+                            return { inlet: 'Edison', outlet: 'Edison' };
+                        }
+                    } else { // 208V
+                        if (fixtureType.includes('led') || fixtureType.includes('moving') || fixtureType.includes('wash')) {
+                            return { inlet: 'PowerCon', outlet: 'PowerCon' };
+                        } else {
+                            return { inlet: 'L6-20', outlet: 'L6-20' };
                         }
                     }
                 } else if (item.type === 'extension') {
@@ -5141,18 +5084,6 @@
                                  item.type === 'splitter' ? '↗' :
                                  item.type === 'coupler' ? '⚡' : '🔧';
 
-                    // Check if fixture is in database
-                    let databaseBadge = '';
-                    if (item.type === 'fixture') {
-                        const fixtureName = item.fixtureData['Instrument Type'] || item.fixtureData['Device Type'] || 'Unknown';
-                        const fixtureInfo = lookupFixture(fixtureName);
-                        if (fixtureInfo) {
-                            databaseBadge = '<div style="font-size: 8px; color: var(--safe); font-weight: 600;">✓ DB</div>';
-                        } else {
-                            databaseBadge = '<div style="font-size: 8px; color: var(--warn); font-weight: 600;">⚠ GUESS</div>';
-                        }
-                    }
-
                     html += `
                         <div class="chain-item">
                             <div class="chain-item-icon">${icon}</div>
@@ -5161,7 +5092,6 @@
                                 <div class="chain-item-info">${item.detail || ''}</div>
                                 ${deviceConnectors.inlet ? `<div style="font-size: 8px; color: var(--text-softer); margin-top: 2px;">In: ${deviceConnectors.inlet}${deviceConnectors.outlet ? ` | Out: ${deviceConnectors.outlet}` : ' | No Thru'}</div>` : ''}
                             </div>
-                            ${databaseBadge}
                             <button class="chain-item-remove" onclick="removeChainItem('${chainId}', ${circuitNum}, ${idx})">Remove</button>
                         </div>
                     `;
@@ -7052,7 +6982,6 @@
 
                 renderPDs();
                 renderDDs();
-                renderCustomFixtures();
                 renderConnections();
                 updateStats();
                 markProjectUpdated();
@@ -7240,6 +7169,327 @@
             // ============================================
             // Circuit Analysis & Auto-Assignment
             // ============================================
+            function normalizeCircuitName(value) {
+                if (value === null || value === undefined) return '';
+                const trimmed = String(value).trim();
+                if (!trimmed || trimmed === '-') return '';
+                return trimmed.replace(/\s+/g, ' ');
+            }
+
+            function isCircuit208(circuitName) {
+                if (!circuitName) return false;
+                return /208V|\*208|\b208\b/i.test(circuitName);
+            }
+
+            function parseUniverseFromFixture(fixture) {
+                if (!fixture) return null;
+                const direct = fixture['Universe'];
+                if (direct !== null && direct !== undefined && String(direct).trim() !== '' && String(direct).trim() !== '-') {
+                    const parsed = parseInt(String(direct).trim());
+                    if (!isNaN(parsed)) return parsed;
+                }
+                const universeAddress = fixture['Universe/Address'];
+                if (universeAddress) {
+                    const part = String(universeAddress).split('/')[0];
+                    const parsed = parseInt(part);
+                    if (!isNaN(parsed)) return parsed;
+                }
+                return null;
+            }
+
+            function calculateShowAnalysis() {
+                if (!projectData.fixtures || projectData.fixtures.length === 0) {
+                    projectData.analysis = null;
+                    return null;
+                }
+
+                const analysis = {
+                    totalFixtures: 0,
+                    uniqueTypes: 0,
+                    totalPositions: 0,
+                    fixturesByType: {},
+                    fixturesByPosition: {},
+                    totalWattage: 0,
+                    mults120V: [],
+                    mults208V: [],
+                    wattsPerMult: {},
+                    totalDMXChannels: 0,
+                    totalUniverses: 0,
+                    universeUtilization: 0,
+                    positionsPerUniverse: {},
+                    splitUniverses: [],
+                    requiredCircuits120V: 0,
+                    requiredCircuits208V: 0,
+                    requiredUniverseOutputs: 0,
+                    warnings: [],
+                    recommended: {}
+                };
+
+                const typeSet = new Set();
+                const positionSet = new Set();
+                const universeSet = new Set();
+                const multVoltageMap = new Map();
+                const positionsPerUniverse = new Map();
+
+                projectData.fixtures.forEach(fixture => {
+                    if (!fixture) return;
+
+                    // Fixture type
+                    const type = fixture['Instrument Type'] || 'Unknown';
+                    typeSet.add(type);
+                    analysis.fixturesByType[type] = (analysis.fixturesByType[type] || 0) + 1;
+
+                    // Position
+                    const rawPosition = fixture['Position'];
+                    const position = rawPosition && rawPosition !== '-' && String(rawPosition).trim() !== '' ? String(rawPosition).trim() : 'Unknown';
+                    positionSet.add(position);
+                    analysis.fixturesByPosition[position] = (analysis.fixturesByPosition[position] || 0) + 1;
+
+                    // Wattage
+                    const wattage = parseFloat(fixture['Wattage']) || 0;
+                    analysis.totalWattage += wattage;
+
+                    // MULT detection
+                    const circuitName = normalizeCircuitName(fixture['Circuit Name']);
+                    if (circuitName) {
+                        const voltage = isCircuit208(circuitName) ? 208 : 120;
+                        if (!multVoltageMap.has(circuitName)) {
+                            multVoltageMap.set(circuitName, voltage);
+                        }
+                        analysis.wattsPerMult[circuitName] = (analysis.wattsPerMult[circuitName] || 0) + wattage;
+                    }
+
+                    // Universe + split detection
+                    const universeValue = parseUniverseFromFixture(fixture);
+                    if (universeValue !== null) {
+                        universeSet.add(universeValue);
+                        if (!positionsPerUniverse.has(universeValue)) {
+                            positionsPerUniverse.set(universeValue, new Set());
+                        }
+                        if (position && position !== 'Unknown') {
+                            positionsPerUniverse.get(universeValue).add(position);
+                        }
+                    }
+
+                    // DMX channels
+                    const footprint = parseInt(fixture['DMX Footprint']) || 0;
+                    analysis.totalDMXChannels += footprint;
+                });
+
+                analysis.totalFixtures = projectData.fixtures.length;
+                analysis.uniqueTypes = typeSet.size;
+                analysis.totalPositions = positionSet.size;
+                analysis.totalUniverses = universeSet.size;
+                analysis.universeUtilization = analysis.totalUniverses > 0
+                    ? Math.round((analysis.totalDMXChannels / (analysis.totalUniverses * 512)) * 100)
+                    : 0;
+
+                multVoltageMap.forEach((voltage, multName) => {
+                    if (voltage === 208) {
+                        analysis.mults208V.push(multName);
+                    } else {
+                        analysis.mults120V.push(multName);
+                    }
+                });
+
+                analysis.mults120V.sort();
+                analysis.mults208V.sort();
+
+                positionsPerUniverse.forEach((posSet, universe) => {
+                    analysis.positionsPerUniverse[universe] = Array.from(posSet).sort();
+                    if (posSet.size > 1) {
+                        analysis.splitUniverses.push({
+                            universe: universe,
+                            positions: Array.from(posSet).sort(),
+                            count: posSet.size
+                        });
+                    }
+                });
+
+                const watts120V = analysis.mults120V.reduce((sum, mult) => sum + (analysis.wattsPerMult[mult] || 0), 0);
+                const watts208V = analysis.mults208V.reduce((sum, mult) => sum + (analysis.wattsPerMult[mult] || 0), 0);
+                const amps120V = watts120V / 120;
+                const amps208V = watts208V / 208;
+                analysis.requiredCircuits120V = Math.ceil(amps120V / 20);
+                analysis.requiredCircuits208V = Math.ceil(amps208V / 20);
+                analysis.requiredUniverseOutputs = analysis.totalUniverses + analysis.splitUniverses.length;
+
+                if (analysis.mults120V.length > 0 && analysis.mults208V.length > 0) {
+                    analysis.warnings.push({
+                        type: 'info',
+                        message: 'Mixed voltage detected — recommend flexible distro'
+                    });
+                }
+                if (analysis.splitUniverses.length > 0) {
+                    analysis.warnings.push({
+                        type: 'warning',
+                        message: `${analysis.splitUniverses.length} split universe(s) detected — may need splitter`
+                    });
+                }
+
+                // Recommendations (highlight only)
+                const totalMults120 = analysis.mults120V.length;
+                const totalMults208 = analysis.mults208V.length;
+                if (totalMults120 + totalMults208 > 0) {
+                    if (totalMults120 > 0 && totalMults208 > 0) {
+                        analysis.recommended.power = {
+                            label: 'Lex 48 Presidential',
+                            detail: `Mixed voltage (${totalMults120}×120V, ${totalMults208}×208V)`
+                        };
+                    } else if (totalMults120 > 0) {
+                        if (analysis.requiredCircuits120V <= 12) {
+                            analysis.recommended.power = {
+                                label: 'Lex 15 Edison Distro',
+                                detail: `${analysis.requiredCircuits120V} circuit(s) needed`
+                            };
+                        } else {
+                            analysis.recommended.power = {
+                                label: 'Applied Distro (30 circuits)',
+                                detail: `${analysis.requiredCircuits120V} circuit(s) needed`
+                            };
+                        }
+                    } else {
+                        analysis.recommended.power = {
+                            label: 'Lex 12 L6-20 Distro',
+                            detail: `${analysis.requiredCircuits208V} circuit(s) needed`
+                        };
+                    }
+                }
+
+                if (analysis.totalUniverses > 0) {
+                    if (analysis.totalUniverses <= 8) {
+                        if (analysis.splitUniverses.length > 0) {
+                            analysis.recommended.data = {
+                                label: 'Node + Splitter',
+                                detail: `${analysis.totalUniverses} universes + ${analysis.splitUniverses.length} split`
+                            };
+                        } else {
+                            analysis.recommended.data = {
+                                label: 'Chauvet Net-X II',
+                                detail: `${analysis.totalUniverses} universes`
+                            };
+                        }
+                    } else {
+                        analysis.recommended.data = {
+                            label: 'Multiple Nodes',
+                            detail: `${analysis.totalUniverses} universes`
+                        };
+                    }
+                }
+
+                projectData.analysis = analysis;
+                return analysis;
+            }
+
+            function renderShowAnalysis() {
+                const group = $('showAnalysisGroup');
+                const content = $('showAnalysisContent');
+                if (!group || !content) return;
+
+                const analysis = projectData.analysis;
+                if (!analysis) {
+                    group.style.display = 'none';
+                    return;
+                }
+
+                group.style.display = 'block';
+
+                const totalCircuitsNeeded = analysis.requiredCircuits120V + analysis.requiredCircuits208V;
+                const watts120 = (analysis.mults120V || []).reduce((sum, mult) => sum + (analysis.wattsPerMult?.[mult] || 0), 0);
+                const watts208 = (analysis.mults208V || []).reduce((sum, mult) => sum + (analysis.wattsPerMult?.[mult] || 0), 0);
+                const amps120 = watts120 / 120;
+                const amps208 = watts208 / 208;
+                const warningsHtml = analysis.warnings.map(w => `
+                    <div class="analysis-warning ${w.type}">
+                        <span class="analysis-warning-icon">${w.type === 'warning' ? '⚠️' : 'ℹ️'}</span>
+                        <span>${w.message}</span>
+                    </div>
+                `).join('');
+
+                const powerRec = analysis.recommended.power;
+                const dataRec = analysis.recommended.data;
+                const recHtml = (powerRec || dataRec) ? `
+                    <div class="analysis-section">
+                        <div class="analysis-section-title">Recommended Equipment</div>
+                        ${powerRec ? `
+                            <div class="gear-highlight" title="Recommendation only">
+                                <div class="gear-highlight-label">POWER</div>
+                                <div>${powerRec.label}</div>
+                                <div class="gear-highlight-qty">${powerRec.detail}</div>
+                            </div>
+                        ` : ''}
+                        ${dataRec ? `
+                            <div class="gear-highlight" title="Recommendation only">
+                                <div class="gear-highlight-label">DATA</div>
+                                <div>${dataRec.label}</div>
+                                <div class="gear-highlight-qty">${dataRec.detail}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : '';
+
+                const unmatched = projectData.unmappedFixtureTypes || [];
+                const suggestions = projectData.fixtureTypeSuggestions || {};
+                const unmatchedHtml = unmatched.length > 0 ? `
+                    <div class="analysis-section">
+                        <div class="analysis-section-title">Unmatched Fixtures</div>
+                        ${unmatched.map(typeName => {
+                            const count = analysis.fixturesByType?.[typeName] || 0;
+                            const suggestionList = suggestions[typeName] || [];
+                            const top = suggestionList[0];
+                            const suggestionHtml = top ? `
+                                <div style="margin-top: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-soft);">Did you mean:</div>
+                                    <div class="gear-highlight" style="margin-top: 4px;">
+                                        <div>${`${top.Manufacturer || ''} ${top.Name || ''} ${top.Variant || ''}`.trim() || 'Unnamed'}</div>
+                                        <div class="gear-highlight-qty">score ${top.score}</div>
+                                        <button class="btn btn-primary" style="margin-top: 6px;" onclick="acceptFixtureSuggestion('${typeName.replace(/\"/g, '&quot;')}', 0)">Accept</button>
+                                    </div>
+                                </div>
+                            ` : '';
+                            return `
+                                <div class="analysis-metric">
+                                    <span>${typeName} (${count})</span>
+                                    <span style="color: var(--warn);">unmatched</span>
+                                </div>
+                                ${suggestionHtml}
+                            `;
+                        }).join('')}
+                    </div>
+                ` : '';
+
+                content.innerHTML = `
+                    <div class="analysis-section">
+                        <div class="analysis-section-title">Show</div>
+                        <div class="analysis-metric"><span>Fixtures</span><span>${analysis.totalFixtures}</span></div>
+                        <div class="analysis-metric"><span>Fixture Types</span><span>${analysis.uniqueTypes}</span></div>
+                        <div class="analysis-metric"><span>Positions</span><span>${analysis.totalPositions}</span></div>
+                    </div>
+
+                    <div class="analysis-section power-section">
+                        <div class="analysis-section-title">Power</div>
+                        <div class="analysis-metric"><span>Total Load</span><span>120V: ${amps120.toFixed(1)} A | 208V: ${amps208.toFixed(1)} A</span></div>
+                        <div class="analysis-metric"><span>120V MULTs</span><span>${analysis.mults120V.length}</span></div>
+                        <div class="analysis-metric"><span>208V MULTs</span><span>${analysis.mults208V.length}</span></div>
+                        <div class="analysis-metric"><span>Circuits Needed</span><span>${totalCircuitsNeeded}</span></div>
+                    </div>
+
+                    <div class="analysis-section data-section">
+                        <div class="analysis-section-title">Data</div>
+                        <div class="analysis-metric"><span>Universes</span><span>${analysis.totalUniverses}</span></div>
+                        <div class="analysis-metric"><span>DMX Channels</span><span>${analysis.totalDMXChannels}</span></div>
+                        <div class="analysis-metric"><span>Utilization</span><span>${analysis.universeUtilization}%</span></div>
+                        ${analysis.splitUniverses.length > 0 ? `
+                            <div class="analysis-metric"><span>Split Universes</span><span>${analysis.splitUniverses.length}</span></div>
+                        ` : ''}
+                    </div>
+
+                    ${warningsHtml ? `<div class="analysis-section">${warningsHtml}</div>` : ''}
+                    ${unmatchedHtml}
+                    ${recHtml}
+                `;
+            }
+
             function getCircuitsFromFixtures() {
                 const circuits = {
                     mults120: [],
@@ -7254,15 +7504,13 @@
                 const multMap = new Map(); // multName -> voltage
 
                 projectData.fixtures.forEach(fixture => {
-                    const circuitName = fixture['Circuit Name'];
-                    if (circuitName && circuitName !== '-' && circuitName.trim() !== '') {
-                        const trimmed = circuitName.trim();
-
+                    const circuitName = normalizeCircuitName(fixture['Circuit Name']);
+                    if (circuitName) {
                         // Detect voltage from circuit name
-                        const is208V = /\*208|208V/i.test(trimmed);
+                        const is208V = isCircuit208(circuitName);
 
-                        if (!multMap.has(trimmed)) {
-                            multMap.set(trimmed, is208V ? 208 : 120);
+                        if (!multMap.has(circuitName)) {
+                            multMap.set(circuitName, is208V ? 208 : 120);
                         }
                     }
                 });
@@ -7614,120 +7862,6 @@
                 renderConnections();
                 updateStats();
                 markProjectUpdated();
-            }
-
-            // ============================================
-            // Fixture Database Management
-            // ============================================
-            let editingFixtureIndex = null;
-
-            function openAddFixtureModal() {
-                editingFixtureIndex = null;
-                $('fixtureModalHeader').textContent = 'Add Custom Fixture';
-                $('fixtureName').value = '';
-                $('fixturePowerIn').value = '';
-                $('fixturePowerOut').value = '';
-                $('fixtureVoltage').value = '';
-                $('fixtureWattage').value = '';
-                $('fixtureModal').classList.add('active');
-            }
-
-            function openEditFixtureModal(index) {
-                editingFixtureIndex = index;
-                const fixture = projectData.customFixtures[index];
-                $('fixtureModalHeader').textContent = 'Edit Custom Fixture';
-                $('fixtureName').value = fixture.name;
-                $('fixturePowerIn').value = fixture.powerIn;
-                $('fixturePowerOut').value = fixture.powerOut || '';
-                $('fixtureVoltage').value = fixture.voltage;
-                $('fixtureWattage').value = fixture.wattage;
-                $('fixtureModal').classList.add('active');
-            }
-
-            function closeFixtureModal() {
-                $('fixtureModal').classList.remove('active');
-                editingFixtureIndex = null;
-            }
-
-            function saveFixture() {
-                const name = $('fixtureName').value.trim();
-                const powerIn = $('fixturePowerIn').value;
-                const powerOut = $('fixturePowerOut').value || null;
-                const voltage = $('fixtureVoltage').value;
-                const wattage = parseInt($('fixtureWattage').value) || 0;
-
-                if (!name || !powerIn || !voltage || wattage === 0) {
-                    alert('Please fill in all required fields (Name, Power Inlet, Voltage, Wattage)');
-                    return;
-                }
-
-                const fixtureData = {
-                    name,
-                    powerIn,
-                    powerOut,
-                    voltage,
-                    wattage
-                };
-
-                if (editingFixtureIndex !== null) {
-                    // Editing existing fixture
-                    projectData.customFixtures[editingFixtureIndex] = fixtureData;
-                } else {
-                    // Adding new fixture
-                    projectData.customFixtures.push(fixtureData);
-                }
-
-                closeFixtureModal();
-                renderCustomFixtures();
-                renderConnections(); // Re-render to update any fixture references
-                markProjectUpdated();
-            }
-
-            function deleteCustomFixture(index) {
-                const fixture = projectData.customFixtures[index];
-                if (confirm(`Delete fixture "${fixture.name}"?`)) {
-                    projectData.customFixtures.splice(index, 1);
-                    renderCustomFixtures();
-                    renderConnections();
-                    markProjectUpdated();
-                }
-            }
-
-            function renderCustomFixtures() {
-                const grid = $('fixtureDbGrid');
-                if (!grid) return;
-
-                if (projectData.customFixtures.length === 0) {
-                    grid.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">💡</div>
-                            <div class="empty-state-text">No custom fixtures yet</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                let html = '';
-                projectData.customFixtures.forEach((fixture, idx) => {
-                    const powerThru = fixture.powerOut ? `Out: ${fixture.powerOut}` : 'No Thru';
-                    html += `
-                        <div class="pd-card">
-                            <div class="pd-card-header">
-                                <div class="pd-card-title">💡 ${fixture.name}</div>
-                                <div class="pd-card-actions">
-                                    <button class="btn" onclick="openEditFixtureModal(${idx})">Edit</button>
-                                    <button class="btn" onclick="deleteCustomFixture(${idx})" style="color: var(--danger);">Delete</button>
-                                </div>
-                            </div>
-                            <div class="pd-card-specs">
-                                <div>In: ${fixture.powerIn} | ${powerThru}</div>
-                                <div>${fixture.voltage} • ${fixture.wattage}W</div>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                grid.innerHTML = html;
             }
 
             // Detect split universes (universes serving multiple positions)
@@ -9077,14 +9211,13 @@
                 const multNamesMap = new Map(); // Map to track mults and detect 208V
                 if (projectData.fixtures && projectData.fixtures.length > 0) {
                     projectData.fixtures.forEach(fixture => {
-                        const circuitName = fixture['Circuit Name'];
-                        if (circuitName && circuitName !== '-' && circuitName.trim() !== '') {
-                            const trimmed = circuitName.trim();
+                        const circuitName = normalizeCircuitName(fixture['Circuit Name']);
+                        if (circuitName) {
                             // Detect if mult has 208V indicator
-                            const is208V = /\*208|208V/i.test(trimmed);
+                            const is208V = isCircuit208(circuitName);
                             // Store the original name for display
-                            if (!multNamesMap.has(trimmed)) {
-                                multNamesMap.set(trimmed, is208V);
+                            if (!multNamesMap.has(circuitName)) {
+                                multNamesMap.set(circuitName, is208V);
                             }
                         }
                     });
@@ -9116,22 +9249,16 @@
                 const universesMap = new Map(); // Map to track universe -> Set of unique positions
                 if (projectData.fixtures && projectData.fixtures.length > 0) {
                     projectData.fixtures.forEach(fixture => {
-                        const universeAddress = fixture['Universe/Address'];
+                        const universeNum = parseUniverseFromFixture(fixture);
                         const position = fixture['Position'];
-                        if (universeAddress) {
-                            const universePart = universeAddress.split('/')[0];
-                            if (universePart) {
-                                const universeNum = parseInt(universePart);
-                                if (!isNaN(universeNum)) {
-                                    // Track unique positions per universe
-                                    if (!universesMap.has(universeNum)) {
-                                        universesMap.set(universeNum, new Set());
-                                    }
-                                    // Add position to the set (only if it exists and isn't '-')
-                                    if (position && position !== '-' && position.trim() !== '') {
-                                        universesMap.get(universeNum).add(position.trim());
-                                    }
-                                }
+                        if (universeNum !== null) {
+                            // Track unique positions per universe
+                            if (!universesMap.has(universeNum)) {
+                                universesMap.set(universeNum, new Set());
+                            }
+                            // Add position to the set (only if it exists and isn't '-')
+                            if (position && position !== '-' && position.trim() !== '') {
+                                universesMap.get(universeNum).add(position.trim());
                             }
                         }
                     });
@@ -9174,8 +9301,7 @@
                 const totalLoad = projectData.powerDistributions.reduce((sum, pd) => {
                     return sum + pd.load.L1 + pd.load.L2 + pd.load.L3;
                 }, 0);
-                const totalKW = (totalLoad * 208 / 1000).toFixed(1);
-                $('statLoad').textContent = `${totalKW} kW`;
+                $('statLoad').textContent = `${totalLoad.toFixed(1)} A`;
 
                 // Data stats (for detailed view)
                 $('statDDs').textContent = projectData.dataDistributions.length;
@@ -9185,6 +9311,9 @@
                 $('statFixtures').textContent = projectData.fixtures.length;
                 $('statAssignedPower').textContent = '0';
                 $('statAssignedData').textContent = '0';
+
+                calculateShowAnalysis();
+                renderShowAnalysis();
             }
 
             // ============================================
