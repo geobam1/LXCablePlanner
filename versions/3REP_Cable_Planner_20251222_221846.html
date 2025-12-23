@@ -7074,44 +7074,9 @@
                     const assigned208 = pd.assignedCircuits ? pd.assignedCircuits.filter(c => c.voltage === 208) : [];
 
                     let capacityDisplay = '';
-                    let electricalDisplay = '';
                     let assignedDisplay = '';
                     let isOverCapacity = false;
                     let warningBadge = '';
-
-                    if (pd.voltage || pd.phase || pd.amperage || pd.mults || (pd.load && typeof pd.load === 'object')) {
-                        const hasLoad = pd.load && typeof pd.load === 'object';
-                        const l1 = hasLoad ? Number(pd.load.L1 || 0) : 0;
-                        const l2 = hasLoad ? Number(pd.load.L2 || 0) : 0;
-                        const l3 = hasLoad ? Number(pd.load.L3 || 0) : 0;
-                        const totalLoad = l1 + l2 + l3;
-                        const phaseCount = Number(pd.phase || 0);
-                        const maxLoad = phaseCount > 0 && pd.amperage ? Number(pd.amperage) * phaseCount : 0;
-                        const loadPct = maxLoad > 0 ? Math.min((totalLoad / maxLoad) * 100, 100) : 0;
-                        const loadBarClass = loadPct > 90 ? 'danger' : loadPct > 75 ? 'warning' : '';
-
-                        electricalDisplay = `
-                            <div style="font-size: 11px; color: var(--text-soft); margin-bottom: 6px;">
-                                ${pd.voltage ? `${pd.voltage}V` : ''}
-                                ${pd.phase ? ` ${pd.phase}Ø` : ''}
-                                ${pd.amperage ? ` • ${pd.amperage}A` : ''}
-                                ${pd.mults ? ` • ${pd.mults} MULTs` : ''}
-                            </div>
-                            <div class="capacity-bar">
-                                <div class="capacity-fill ${loadBarClass}" style="width: ${loadPct}%"></div>
-                            </div>
-                            <div style="font-size: 10px; margin-top: 4px;">
-                                ${maxLoad > 0 ? `Load: ${totalLoad.toFixed(1)}A / ${maxLoad}A (${loadPct.toFixed(0)}%)` : 'Load: —'}
-                            </div>
-                            ${hasLoad && pd.phase === 3 ? `
-                                <div class="phase-loads">
-                                    <div class="phase-load">L1: ${l1.toFixed(1)}A</div>
-                                    <div class="phase-load">L2: ${l2.toFixed(1)}A</div>
-                                    <div class="phase-load">L3: ${l3.toFixed(1)}A</div>
-                                </div>
-                            ` : ''}
-                        `;
-                    }
 
                     if (pd.isFlexible) {
                         // Presidential: Show combined capacity (flexMults total)
@@ -7197,7 +7162,6 @@
                                 ${!pd.isFlexible && pd.circuits208 > 0 ? `${pd.circuits208} × 208V circuits` : ''}
                             </div>
                             ${pd.notes ? `<div style="font-size: 10px; color: var(--text-soft); margin-top: 4px;">${pd.notes}</div>` : ''}
-                            ${electricalDisplay}
                             ${capacityDisplay}
                             ${assignedDisplay}
                         </div>

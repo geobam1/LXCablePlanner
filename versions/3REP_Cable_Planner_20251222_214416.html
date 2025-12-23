@@ -3923,58 +3923,87 @@
                     mergedData = { ...fileData.mvr };
                 }
 
-                // Intelligently merge TXT data with MVR data (TXT is source of truth)
+                // Intelligently merge TXT data with MVR data
                 if (fileData.txt && fileData.txt.fixtures && fileData.mvr && fileData.mvr.fixtures) {
                     const mvrFixtures = fileData.mvr.fixtures;
                     const txtFixtures = fileData.txt.fixtures;
 
-                    const mvrByPosition = new Map();
-                    const mvrByFixtureId = new Map();
-                    const mvrByUID = new Map();
+                    // Create a merged fixtures array
+                    const mergedFixtures = [];
 
-                    mvrFixtures.forEach(mvrFix => {
-                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
-                        if (mvrUID) {
-                            mvrByUID.set(String(mvrUID).trim(), mvrFix);
+                    // Build lookup maps for efficient matching
+                    const txtByPosition = new Map();
+                    const txtByFixtureId = new Map();
+                    const txtByUID = new Map();
+
+                    txtFixtures.forEach(txtFix => {
+                        const uidValue = txtFix.__UID || txtFix.UID || txtFix.UUID;
+                        if (uidValue) {
+                            txtByUID.set(String(uidValue).trim(), txtFix);
                         }
-                        if (mvrFix.Position) {
-                            mvrByPosition.set(mvrFix.Position.trim().toLowerCase(), mvrFix);
+                        if (txtFix.Position) {
+                            txtByPosition.set(txtFix.Position.trim().toLowerCase(), txtFix);
                         }
-                        if (mvrFix["Fixture ID"]) {
-                            mvrByFixtureId.set(mvrFix["Fixture ID"].trim(), mvrFix);
+                        if (txtFix["Fixture ID"]) {
+                            txtByFixtureId.set(txtFix["Fixture ID"].trim(), txtFix);
                         }
                     });
 
-                    const mergedFixtures = txtFixtures.map(txtFix => {
-                        let mvrMatch = null;
-                        const txtUID = txtFix.__UID || txtFix.UID || txtFix.UUID;
-                        if (txtUID) {
-                            mvrMatch = mvrByUID.get(String(txtUID).trim());
-                        }
-                        if (!mvrMatch && txtFix.Position) {
-                            mvrMatch = mvrByPosition.get(txtFix.Position.trim().toLowerCase());
-                        }
-                        if (!mvrMatch && txtFix["Fixture ID"]) {
-                            mvrMatch = mvrByFixtureId.get(txtFix["Fixture ID"].trim());
+                    // Merge each MVR fixture with matching TXT fixture
+                    mvrFixtures.forEach(mvrFix => {
+                        let txtMatch = null;
+                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
+
+                        // Try to match by UID first
+                        if (mvrUID) {
+                            txtMatch = txtByUID.get(String(mvrUID).trim());
                         }
 
-                        if (!mvrMatch) {
-                            return { ...txtFix };
+                        // If no match by UID, try Position
+                        if (!txtMatch && mvrFix.Position) {
+                            txtMatch = txtByPosition.get(mvrFix.Position.trim().toLowerCase());
                         }
 
-                        const merged = { ...txtFix };
-                        if (mvrMatch.__mvr) {
-                            merged.__mvr = mvrMatch.__mvr;
+                        // If no match by Position, try Fixture ID
+                        if (!txtMatch && mvrFix["Fixture ID"]) {
+                            txtMatch = txtByFixtureId.get(mvrFix["Fixture ID"].trim());
                         }
-                        if ((!merged["MVR Position"] || merged["MVR Position"] === '-') && mvrMatch["MVR Position"]) {
-                            merged["MVR Position"] = mvrMatch["MVR Position"];
+
+                        // Merge the data - TXT data takes precedence for overlapping fields
+                        const merged = txtMatch ? { ...mvrFix, ...txtMatch } : { ...mvrFix };
+
+                        // Preserve MVR spatial metadata for cable-length calculations
+                        if (mvrFix.__mvr && !merged.__mvr) {
+                            merged.__mvr = mvrFix.__mvr;
+                        }
+                        if ((!merged["MVR Position"] || merged["MVR Position"] === '-') && mvrFix["MVR Position"]) {
+                            merged["MVR Position"] = mvrFix["MVR Position"];
                         }
                         ["PositionX", "PositionY", "PositionZ", "Custom Data", "MVR Matrix", "MVR Rotation", "MVR Layer", "MVR Group"].forEach((key) => {
-                            if ((merged[key] === undefined || merged[key] === null || merged[key] === '') && mvrMatch[key] !== undefined) {
-                                merged[key] = mvrMatch[key];
+                            if ((merged[key] === undefined || merged[key] === null || merged[key] === '') && mvrFix[key] !== undefined) {
+                                merged[key] = mvrFix[key];
                             }
                         });
-                        return merged;
+                        mergedFixtures.push(merged);
+                    });
+
+                    // Add any TXT fixtures that didn't match an MVR fixture
+                    txtFixtures.forEach(txtFix => {
+                        const uidMatch = (txtFix.__UID || txtFix.UID || txtFix.UUID) &&
+                            mvrFixtures.some(m => {
+                                const mvrUID = m.UUID || m.__UID || m.UID;
+                                return mvrUID && String(mvrUID).trim() === String(txtFix.__UID || txtFix.UID || txtFix.UUID).trim();
+                            });
+                        const positionMatch = txtFix.Position &&
+                            mvrFixtures.some(m => m.Position &&
+                                m.Position.trim().toLowerCase() === txtFix.Position.trim().toLowerCase());
+                        const idMatch = txtFix["Fixture ID"] &&
+                            mvrFixtures.some(m => m["Fixture ID"] &&
+                                m["Fixture ID"].trim() === txtFix["Fixture ID"].trim());
+
+                        if (!uidMatch && !positionMatch && !idMatch) {
+                            mergedFixtures.push({ ...txtFix });
+                        }
                     });
 
                     mergedData.fixtures = mergedFixtures;
@@ -4005,118 +4034,13 @@
                     throw new Error("XML parsing failed: " + parseError.textContent);
                 }
 
-                // Extract fixtures from XML - prefer Fixture elements, fallback to SceneObject
+                // Extract fixtures from XML - search for SceneObject elements
                 const fixtures = [];
-                const fixtureNodes = xmlDoc.querySelectorAll("Fixture");
-                const positionNodes = xmlDoc.querySelectorAll("Position[name][uuid]");
-                const positionNameById = new Map();
-                positionNodes.forEach((pos) => {
-                    const id = pos.getAttribute("uuid");
-                    const name = pos.getAttribute("name") || "";
-                    if (id) positionNameById.set(id, name);
-                });
+                const sceneObjects = xmlDoc.querySelectorAll("SceneObject");
 
-                if (fixtureNodes.length > 0) {
-                    fixtureNodes.forEach((fixtureNode) => {
-                        const fixtureName = fixtureNode.getAttribute("name") || "";
-                        const uuid = fixtureNode.getAttribute("uuid") || "";
-
-                        const gdtfSpec = fixtureNode.querySelector("GDTFSpec");
-                        let fixtureTypeName = "";
-                        if (gdtfSpec) {
-                            fixtureTypeName = gdtfSpec.textContent || gdtfSpec.getAttribute("name") || "";
-                        }
-
-                        const addresses = fixtureNode.querySelector("Addresses");
-                        let universeAddress = "";
-                        if (addresses) {
-                            const address = addresses.querySelector("Address");
-                            if (address) {
-                                const universe = parseInt(address.getAttribute("break") || "0", 10) + 1;
-                                const dmxAddress = address.textContent || "1";
-                                universeAddress = `${universe}/${dmxAddress}`;
-                            }
-                        }
-
-                        const matrix = fixtureNode.querySelector("Matrix");
-                        let positionData = "";
-                        let posX = "0", posY = "0", posZ = "0";
-                        let matrixText = "";
-                        if (matrix) {
-                            matrixText = matrix.textContent || "";
-                            const matrixMatch = matrixText.match(/\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}/);
-                            if (matrixMatch && matrixMatch[4]) {
-                                const translation = matrixMatch[4].split(',');
-                                posX = translation[0] || "0";
-                                posY = translation[1] || "0";
-                                posZ = translation[2] || "0";
-                                positionData = `${posX},${posY},${posZ}`;
-                            }
-                        }
-
-                        const positionId = fixtureNode.querySelector("Position")?.textContent || "";
-                        const positionName = positionNameById.get(positionId) || positionId || fixtureName;
-
-                        const customId = fixtureNode.querySelector("CustomId")?.textContent || "";
-                        const channelId = fixtureNode.querySelector("ChannelId")?.textContent || "";
-                        const fixtureId = fixtureNode.querySelector("FixtureID")?.textContent || "";
-
-                        const circuitName = fixtureNode.querySelector("CircuitName")?.textContent ||
-                                           fixtureNode.querySelector("Circuit")?.textContent || "-";
-                        const circuitNumber = fixtureNode.querySelector("CircuitNumber")?.textContent ||
-                                             fixtureNode.querySelector("Circuit")?.getAttribute("number") || "";
-                        const wattage = fixtureNode.querySelector("Wattage")?.textContent ||
-                                       fixtureNode.querySelector("Power")?.textContent || "";
-                        const purpose = fixtureNode.querySelector("Purpose")?.textContent ||
-                                       fixtureNode.querySelector("Function")?.textContent || "";
-                        const rotationText = fixtureNode.querySelector("Rotation")?.textContent || "";
-
-                        const mvrMeta = {
-                            positionName: positionName,
-                            uuid: uuid,
-                            position: {
-                                x: parseFloat(posX) || 0,
-                                y: parseFloat(posY) || 0,
-                                z: parseFloat(posZ) || 0
-                            },
-                            matrix: matrixText || "",
-                            rotation: rotationText || "",
-                            layer: "",
-                            group: ""
-                        };
-
-                        fixtures.push({
-                            "Instrument Type": fixtureTypeName || fixtureName,
-                            "Fixture Type": fixtureTypeName || fixtureName,
-                            "Position": positionName,
-                            "Fixture ID": fixtureId || customId || "",
-                            "Channel": channelId || fixtureId || "",
-                            "Universe/Address": universeAddress,
-                            "Circuit Name": circuitName,
-                            "Circuit Number": circuitNumber,
-                            "Wattage": wattage,
-                            "Purpose": purpose,
-                            "UUID": uuid,
-                            "PositionX": posX,
-                            "PositionY": posY,
-                            "PositionZ": posZ,
-                            "Custom Data": positionData,
-                            "MVR Position": positionName,
-                            "MVR Matrix": matrixText,
-                            "MVR Rotation": rotationText,
-                            "MVR Layer": "",
-                            "MVR Group": "",
-                            "__mvr": mvrMeta
-                        });
-                    });
-                }
-
-                if (fixtures.length === 0) {
-                    const sceneObjects = xmlDoc.querySelectorAll("SceneObject");
-
-                    sceneObjects.forEach((sceneObject) => {
-                        const name = sceneObject.getAttribute("name") || "";
-                        const uuid = sceneObject.getAttribute("uuid") || "";
+                sceneObjects.forEach((sceneObject) => {
+                    const name = sceneObject.getAttribute("name") || "";
+                    const uuid = sceneObject.getAttribute("uuid") || "";
 
                     // Get fixture type from GDTFSpec
                     const gdtfSpec = sceneObject.querySelector("GDTFSpec");
@@ -4220,9 +4144,8 @@
                         "__mvr": mvrMeta
                     };
 
-                        fixtures.push(fixture);
-                    });
-                }
+                    fixtures.push(fixture);
+                });
 
                 // Return data in the format expected by loadLXData
                 return {
@@ -5424,10 +5347,25 @@
                 }
             }
 
-            function addCableSegment(connectionId, selectId) {
-                const select = document.getElementById(selectId);
-                if (!select || !select.value) return;
-                updateCableLength(connectionId, select.value, 1);
+            function setCableLengthSingle(connectionId, length) {
+                const entry = getCableEntry(connectionId);
+                if (!entry) return;
+
+                if (!length) {
+                    entry.lengths = [];
+                    entry.totalLength = 0;
+                    entry.length = null;
+                } else {
+                    entry.lengths = [{ length: length, quantity: 1 }];
+                    entry.totalLength = parseInt(length);
+                    entry.length = parseInt(length);
+                }
+
+                markProjectUpdated();
+                renderGearList();
+                if (projectData.activeSection === 'connections') {
+                    renderConnectionStatus();
+                }
             }
 
             function renderConnectionCard(conn) {
@@ -5704,11 +5642,8 @@
             function renderFixtureChain(fixtures, connectionId, circuitNum, voltage, position = '', showData = true) {
                 if (!fixtures || fixtures.length === 0) return '';
 
-                    // Parse voltage to determine connector type options
-                    const voltageNum = parseInt(voltage);
-                    const powerConnectors = voltageNum === 208
-                        ? ['L6-20', 'PowerCon', 'Tru1', 'GP']
-                        : ['Edison', 'IEC', 'PowerCon', 'Tru1', 'GP'];
+                // Parse voltage to determine connector type options
+                const voltageNum = parseInt(voltage);
 
                 let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
 
@@ -5775,7 +5710,11 @@
                                             onchange="updateFixtureConnection('${fixtureId}', 'power_in')"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">Select...</option>
-                                        ${powerConnectors.map(connector => `<option value="${connector}">${connector} (F)</option>`).join('')}
+                                        <option value="Edison">Edison (M)</option>
+                                        <option value="Tru1">Tru1 (M)</option>
+                                        <option value="PowerCon">PowerCon (M)</option>
+                                        <option value="GP">GP (M)</option>
+                                        <option value="L6-20">L6-20 (M)</option>
                                     </select>
                                     <div style="font-size: 8px; color: var(--text-softer); margin-top: 2px;">${voltage}</div>
                                 </div>
@@ -5792,8 +5731,8 @@
                                             onchange="updateFixtureConnection('${fixtureId}', 'data_in')"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">Select...</option>
-                                        <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5) (M)</option>
-                                        <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3) (M)</option>
+                                        <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5)</option>
+                                        <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3)</option>
                                         <option value="EtherCON" ${dataCableType === 'EtherCON' ? 'selected' : ''}>EtherCON</option>
                                         <option value="RJ45">RJ45</option>
                                     </select>
@@ -5811,7 +5750,11 @@
                                             data-next-fixture-label="${nextFixtureLabel.replace(/\"/g, '&quot;')}"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">None</option>
-                                        ${powerConnectors.map(connector => `<option value="${connector}">${connector} (F)</option>`).join('')}
+                                        <option value="Edison">Edison (F)</option>
+                                        <option value="Tru1">Tru1 (F)</option>
+                                        <option value="PowerCon">PowerCon (F)</option>
+                                        <option value="GP">GP (F)</option>
+                                        <option value="L6-20">L6-20 (F)</option>
                                     </select>
                                 </div>
 
@@ -5826,8 +5769,8 @@
                                             data-next-fixture-label="${nextFixtureLabel.replace(/\"/g, '&quot;')}"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">None</option>
-                                        <option value="A5">5-pin XLR (A5) (F)</option>
-                                        <option value="A3">3-pin XLR (A3) (F)</option>
+                                        <option value="A5">5-pin XLR (A5)</option>
+                                        <option value="A3">3-pin XLR (A3)</option>
                                         <option value="EtherCON">EtherCON</option>
                                         <option value="RJ45">RJ45</option>
                                     </select>
@@ -5862,7 +5805,6 @@
                         }
 
                         const jumperId = `${fixtureId}_power_jump_${idx}`;
-                        const adapterId = `${jumperId}_adapter`;
                         let jumperEntry = getCableEntry(jumperId);
                         let jumperSelected = jumperEntry ? jumperEntry.cableType : '';
 
@@ -5874,20 +5816,14 @@
                             jumperSelected = jumperOptions[0];
                         }
 
-                        if (connectorMismatch && fromConnector && toConnector) {
-                            const adapterLabel = `${fromConnector} (F) → ${toConnector} (M) Adapter`;
-                            const fromLabel = `${fixtureLabel} Power Out`;
-                            const toLabel = `${nextFixtureLabel} Power In`;
-                            addOrUpdateCable(adapterId, adapterLabel, fromLabel, toLabel, 'Adapter', fromConnector, toConnector, 'Adapter');
-                        }
-
                         const actualMeters = getFixtureDistanceMeters(fixture, nextFixture);
                         const actualFeet = isFinite(actualMeters) ? actualMeters * 3.28084 : null;
                         const suggestedLength = actualFeet ? getSuggestedLengthFeet(actualFeet, JUMPER_LENGTHS) : '';
-                        const lengthValue = suggestedLength || '';
+                        const lengthEntry = jumperEntry && jumperEntry.lengths && jumperEntry.lengths.length === 1 && jumperEntry.lengths[0].quantity === 1
+                            ? jumperEntry.lengths[0].length
+                            : '';
+                        const lengthValue = lengthEntry || suggestedLength || '';
                         const suggestionLabel = actualMeters ? `(~${formatImperialDistance(actualMeters)} actual)` : '';
-                        const lengthSelectId = `${jumperId}_len`;
-                        const jumperSegments = jumperEntry ? jumperEntry.lengths : [];
 
                         html += `
                             <div style="margin: 6px 0; padding: 8px; border: 1px dashed ${connectorMismatch ? 'var(--warn)' : 'var(--border)'}; border-radius: 6px; background: var(--bg);">
@@ -5899,24 +5835,13 @@
                                         ${jumperOptions.map(option => `<option value="${option}" ${jumperSelected === option ? 'selected' : ''}>${option}</option>`).join('')}
                                     </select>
                                     <div style="display: grid; gap: 4px;">
-                                        <select id="${lengthSelectId}" style="width: 100%; font-size: 9px; padding: 4px;">
+                                        <select onchange="setCableLengthSingle('${jumperId}', this.value)" style="width: 100%; font-size: 9px; padding: 4px;">
                                             <option value="">Select length...</option>
                                             ${JUMPER_LENGTHS.map(length => `<option value="${length}" ${lengthValue === length ? 'selected' : ''}>${length}'</option>`).join('')}
                                         </select>
-                                        <button class="btn" onclick="addCableSegment('${jumperId}', '${lengthSelectId}')" style="font-size: 9px; padding: 4px 6px;">+ Add Segment</button>
                                         ${suggestionLabel ? `<div style="font-size: 9px; color: var(--text-softer);">${suggestionLabel}</div>` : ''}
                                     </div>
                                 </div>
-                                ${jumperSegments && jumperSegments.length > 0 ? `
-                                <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">
-                                    ${jumperSegments.map(segment => `
-                                        <div style="display: flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: 9px;">
-                                            <span>${segment.length}' ×${segment.quantity}</span>
-                                            <button class="btn" onclick="updateCableLength('${jumperId}', '${segment.length}', -1)" style="font-size: 8px; padding: 1px 5px;">−</button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                ` : ''}
                             </div>
                         `;
                     }
@@ -6021,9 +5946,9 @@
                                                 onchange="updateFixtureConnection('${fixtureId}', 'data_in')"
                                                 style="width: 100%; font-size: 9px; padding: 2px; ${connectorMissing ? 'border: 1px solid var(--warn); background: rgba(245, 158, 11, 0.1);' : ''}">
                                             <option value="">${connectorMissing ? '⚠️ Select connector...' : 'Select...'}</option>
-                                        <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5) (M)</option>
-                                        <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3) (M)</option>
-                                        <option value="EtherCON" ${dataCableType === 'EtherCON' ? 'selected' : ''}>EtherCON</option>
+                                            <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5)</option>
+                                            <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3)</option>
+                                            <option value="EtherCON" ${dataCableType === 'EtherCON' ? 'selected' : ''}>EtherCON</option>
                                             <option value="RJ45">RJ45</option>
                                         </select>
                                     </div>
@@ -6038,9 +5963,9 @@
                                                 onchange="updateFixtureConnection('${fixtureId}', 'data_out')"
                                                 style="width: 100%; font-size: 9px; padding: 2px;">
                                             <option value="">None</option>
-                                        <option value="A5">5-pin XLR (A5) (F)</option>
-                                        <option value="A3">3-pin XLR (A3) (F)</option>
-                                        <option value="EtherCON">EtherCON</option>
+                                            <option value="A5">5-pin XLR (A5)</option>
+                                            <option value="A3">3-pin XLR (A3)</option>
+                                            <option value="EtherCON">EtherCON</option>
                                             <option value="RJ45">RJ45</option>
                                         </select>
                                     </div>
@@ -6362,17 +6287,10 @@
                 const gearListGroup = $('gearListGroup');
                 const gearListContent = $('gearListContent');
                 const gearListCount = $('gearListCount');
-                if (!gearListGroup || !gearListContent || !gearListCount) return;
-                const cableList = Array.isArray(projectData.cableList) ? projectData.cableList : [];
 
                 // Filter to only show cables with lengths selected
-                const cablesWithLengths = cableList.filter(cable => cable.lengths && cable.lengths.length > 0);
-                const cablesWithoutLengths = cableList.filter(cable => !cable.lengths || cable.lengths.length === 0);
-                const adapters = cableList.filter(cable =>
-                    cable.category === 'Adapter' ||
-                    (cable.cableType && cable.cableType.toLowerCase().includes('adapter')) ||
-                    (cable.cable && cable.cable.toLowerCase().includes('adapter'))
-                );
+                const cablesWithLengths = projectData.cableList.filter(cable => cable.lengths && cable.lengths.length > 0);
+                const cablesWithoutLengths = projectData.cableList.filter(cable => !cable.lengths || cable.lengths.length === 0);
 
                 if (cablesWithLengths.length === 0 && cablesWithoutLengths.length === 0) {
                     gearListGroup.style.display = 'none';
@@ -6429,8 +6347,11 @@
                     html += `
                         <div style="padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <div style="font-size: 11px; font-weight: 600;">${entry.length}' ${entry.cableType}</div>
+                                <div style="font-size: 11px; font-weight: 600;">${entry.cableType}</div>
                                 <div style="font-size: 11px; font-weight: 600; color: var(--blue);">×${entry.quantity}</div>
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-soft);">
+                                ${entry.length}ft
                             </div>
                             <div style="font-size: 9px; color: var(--text-softer); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${connectionsText}">
                                 ${connectionsText}
@@ -6439,50 +6360,9 @@
                     `;
                 });
 
-                if (adapters.length > 0) {
-                    const adaptersByType = new Map();
-                    adapters.forEach(cable => {
-                        const key = cable.cableType || cable.cable || 'Adapter';
-                        if (!adaptersByType.has(key)) {
-                            adaptersByType.set(key, { cableType: key, quantity: 0, connections: [] });
-                        }
-                        const entry = adaptersByType.get(key);
-                        entry.quantity += 1;
-                        entry.connections.push({ from: cable.from, to: cable.to });
-                    });
-
-                    html += `
-                        <div style="margin-top: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
-                            <div style="font-size: 11px; font-weight: 600; margin-bottom: 6px;">Adapters</div>
-                            <div style="display: grid; gap: 6px;">
-                    `;
-
-                    adaptersByType.forEach(entry => {
-                        const connectionsText = entry.connections.length > 3
-                            ? `${entry.connections.length} connections`
-                            : entry.connections.map(c => `${c.from}→${c.to}`).join(', ');
-                        html += `
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="font-size: 10px; font-weight: 600;">${entry.cableType}</div>
-                                <div style="font-size: 10px; color: var(--text-soft);">×${entry.quantity}</div>
-                            </div>
-                            <div style="font-size: 9px; color: var(--text-softer); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${connectionsText}">
-                                ${connectionsText}
-                            </div>
-                        `;
-                    });
-
-                    html += `
-                            </div>
-                        </div>
-                    `;
-                }
-
                 if (cablesWithoutLengths.length > 0) {
                     const pendingByType = new Map();
-                    cablesWithoutLengths.filter(cable =>
-                        !adapters.includes(cable)
-                    ).forEach(cable => {
+                    cablesWithoutLengths.forEach(cable => {
                         const key = cable.cableType || 'Unknown Cable';
                         if (!pendingByType.has(key)) {
                             pendingByType.set(key, { cableType: key, quantity: 0, connections: [] });
@@ -7074,44 +6954,9 @@
                     const assigned208 = pd.assignedCircuits ? pd.assignedCircuits.filter(c => c.voltage === 208) : [];
 
                     let capacityDisplay = '';
-                    let electricalDisplay = '';
                     let assignedDisplay = '';
                     let isOverCapacity = false;
                     let warningBadge = '';
-
-                    if (pd.voltage || pd.phase || pd.amperage || pd.mults || (pd.load && typeof pd.load === 'object')) {
-                        const hasLoad = pd.load && typeof pd.load === 'object';
-                        const l1 = hasLoad ? Number(pd.load.L1 || 0) : 0;
-                        const l2 = hasLoad ? Number(pd.load.L2 || 0) : 0;
-                        const l3 = hasLoad ? Number(pd.load.L3 || 0) : 0;
-                        const totalLoad = l1 + l2 + l3;
-                        const phaseCount = Number(pd.phase || 0);
-                        const maxLoad = phaseCount > 0 && pd.amperage ? Number(pd.amperage) * phaseCount : 0;
-                        const loadPct = maxLoad > 0 ? Math.min((totalLoad / maxLoad) * 100, 100) : 0;
-                        const loadBarClass = loadPct > 90 ? 'danger' : loadPct > 75 ? 'warning' : '';
-
-                        electricalDisplay = `
-                            <div style="font-size: 11px; color: var(--text-soft); margin-bottom: 6px;">
-                                ${pd.voltage ? `${pd.voltage}V` : ''}
-                                ${pd.phase ? ` ${pd.phase}Ø` : ''}
-                                ${pd.amperage ? ` • ${pd.amperage}A` : ''}
-                                ${pd.mults ? ` • ${pd.mults} MULTs` : ''}
-                            </div>
-                            <div class="capacity-bar">
-                                <div class="capacity-fill ${loadBarClass}" style="width: ${loadPct}%"></div>
-                            </div>
-                            <div style="font-size: 10px; margin-top: 4px;">
-                                ${maxLoad > 0 ? `Load: ${totalLoad.toFixed(1)}A / ${maxLoad}A (${loadPct.toFixed(0)}%)` : 'Load: —'}
-                            </div>
-                            ${hasLoad && pd.phase === 3 ? `
-                                <div class="phase-loads">
-                                    <div class="phase-load">L1: ${l1.toFixed(1)}A</div>
-                                    <div class="phase-load">L2: ${l2.toFixed(1)}A</div>
-                                    <div class="phase-load">L3: ${l3.toFixed(1)}A</div>
-                                </div>
-                            ` : ''}
-                        `;
-                    }
 
                     if (pd.isFlexible) {
                         // Presidential: Show combined capacity (flexMults total)
@@ -7197,7 +7042,6 @@
                                 ${!pd.isFlexible && pd.circuits208 > 0 ? `${pd.circuits208} × 208V circuits` : ''}
                             </div>
                             ${pd.notes ? `<div style="font-size: 10px; color: var(--text-soft); margin-top: 4px;">${pd.notes}</div>` : ''}
-                            ${electricalDisplay}
                             ${capacityDisplay}
                             ${assignedDisplay}
                         </div>

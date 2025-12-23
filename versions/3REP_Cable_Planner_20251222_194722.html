@@ -3384,20 +3384,9 @@
                     // No JSON, but we have MVR - combine MVR + TXT data
                     const mergedData = mergeFileData(uploadedFiles);
                     loadLXData(mergedData);
-                } else if (uploadedFiles.txt && uploadedFiles.txt.fixtures) {
-                    // TXT only (no MVR/JSON) - load fixtures directly from TXT
-                    // This allows stats to populate before MVR is uploaded
-                    projectData.fixtures = uploadedFiles.txt.fixtures;
-                    projectData.showName = uploadedFiles.txt.fileName || "TXT Import";
-
-                    // Trigger all refresh functions
-                    autoAssignCircuits();
-                    autoAssignUniverses();
-                    renderPDs();
-                    renderDDs();
-                    renderConnections();
                 }
-                // If only TSV is uploaded, just store it and update UI
+                // If only TXT or TSV is uploaded, just store it and update UI
+                // The user will see the prompt to upload the missing files
 
                 // Store TSV reference (but don't embed it in project data)
                 if (uploadedFiles.tsv) {
@@ -3923,58 +3912,74 @@
                     mergedData = { ...fileData.mvr };
                 }
 
-                // Intelligently merge TXT data with MVR data (TXT is source of truth)
+                // Intelligently merge TXT data with MVR data
                 if (fileData.txt && fileData.txt.fixtures && fileData.mvr && fileData.mvr.fixtures) {
                     const mvrFixtures = fileData.mvr.fixtures;
                     const txtFixtures = fileData.txt.fixtures;
 
-                    const mvrByPosition = new Map();
-                    const mvrByFixtureId = new Map();
-                    const mvrByUID = new Map();
+                    // Create a merged fixtures array
+                    const mergedFixtures = [];
 
-                    mvrFixtures.forEach(mvrFix => {
-                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
-                        if (mvrUID) {
-                            mvrByUID.set(String(mvrUID).trim(), mvrFix);
+                    // Build lookup maps for efficient matching
+                    const txtByPosition = new Map();
+                    const txtByFixtureId = new Map();
+                    const txtByUID = new Map();
+
+                    txtFixtures.forEach(txtFix => {
+                        const uidValue = txtFix.__UID || txtFix.UID || txtFix.UUID;
+                        if (uidValue) {
+                            txtByUID.set(String(uidValue).trim(), txtFix);
                         }
-                        if (mvrFix.Position) {
-                            mvrByPosition.set(mvrFix.Position.trim().toLowerCase(), mvrFix);
+                        if (txtFix.Position) {
+                            txtByPosition.set(txtFix.Position.trim().toLowerCase(), txtFix);
                         }
-                        if (mvrFix["Fixture ID"]) {
-                            mvrByFixtureId.set(mvrFix["Fixture ID"].trim(), mvrFix);
+                        if (txtFix["Fixture ID"]) {
+                            txtByFixtureId.set(txtFix["Fixture ID"].trim(), txtFix);
                         }
                     });
 
-                    const mergedFixtures = txtFixtures.map(txtFix => {
-                        let mvrMatch = null;
-                        const txtUID = txtFix.__UID || txtFix.UID || txtFix.UUID;
-                        if (txtUID) {
-                            mvrMatch = mvrByUID.get(String(txtUID).trim());
-                        }
-                        if (!mvrMatch && txtFix.Position) {
-                            mvrMatch = mvrByPosition.get(txtFix.Position.trim().toLowerCase());
-                        }
-                        if (!mvrMatch && txtFix["Fixture ID"]) {
-                            mvrMatch = mvrByFixtureId.get(txtFix["Fixture ID"].trim());
+                    // Merge each MVR fixture with matching TXT fixture
+                    mvrFixtures.forEach(mvrFix => {
+                        let txtMatch = null;
+                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
+
+                        // Try to match by UID first
+                        if (mvrUID) {
+                            txtMatch = txtByUID.get(String(mvrUID).trim());
                         }
 
-                        if (!mvrMatch) {
-                            return { ...txtFix };
+                        // If no match by UID, try Position
+                        if (!txtMatch && mvrFix.Position) {
+                            txtMatch = txtByPosition.get(mvrFix.Position.trim().toLowerCase());
                         }
 
-                        const merged = { ...txtFix };
-                        if (mvrMatch.__mvr) {
-                            merged.__mvr = mvrMatch.__mvr;
+                        // If no match by Position, try Fixture ID
+                        if (!txtMatch && mvrFix["Fixture ID"]) {
+                            txtMatch = txtByFixtureId.get(mvrFix["Fixture ID"].trim());
                         }
-                        if ((!merged["MVR Position"] || merged["MVR Position"] === '-') && mvrMatch["MVR Position"]) {
-                            merged["MVR Position"] = mvrMatch["MVR Position"];
+
+                        // Merge the data - TXT data takes precedence for overlapping fields
+                        const merged = txtMatch ? { ...mvrFix, ...txtMatch } : { ...mvrFix };
+                        mergedFixtures.push(merged);
+                    });
+
+                    // Add any TXT fixtures that didn't match an MVR fixture
+                    txtFixtures.forEach(txtFix => {
+                        const uidMatch = (txtFix.__UID || txtFix.UID || txtFix.UUID) &&
+                            mvrFixtures.some(m => {
+                                const mvrUID = m.UUID || m.__UID || m.UID;
+                                return mvrUID && String(mvrUID).trim() === String(txtFix.__UID || txtFix.UID || txtFix.UUID).trim();
+                            });
+                        const positionMatch = txtFix.Position &&
+                            mvrFixtures.some(m => m.Position &&
+                                m.Position.trim().toLowerCase() === txtFix.Position.trim().toLowerCase());
+                        const idMatch = txtFix["Fixture ID"] &&
+                            mvrFixtures.some(m => m["Fixture ID"] &&
+                                m["Fixture ID"].trim() === txtFix["Fixture ID"].trim());
+
+                        if (!uidMatch && !positionMatch && !idMatch) {
+                            mergedFixtures.push({ ...txtFix });
                         }
-                        ["PositionX", "PositionY", "PositionZ", "Custom Data", "MVR Matrix", "MVR Rotation", "MVR Layer", "MVR Group"].forEach((key) => {
-                            if ((merged[key] === undefined || merged[key] === null || merged[key] === '') && mvrMatch[key] !== undefined) {
-                                merged[key] = mvrMatch[key];
-                            }
-                        });
-                        return merged;
                     });
 
                     mergedData.fixtures = mergedFixtures;
@@ -4005,118 +4010,13 @@
                     throw new Error("XML parsing failed: " + parseError.textContent);
                 }
 
-                // Extract fixtures from XML - prefer Fixture elements, fallback to SceneObject
+                // Extract fixtures from XML - search for SceneObject elements
                 const fixtures = [];
-                const fixtureNodes = xmlDoc.querySelectorAll("Fixture");
-                const positionNodes = xmlDoc.querySelectorAll("Position[name][uuid]");
-                const positionNameById = new Map();
-                positionNodes.forEach((pos) => {
-                    const id = pos.getAttribute("uuid");
-                    const name = pos.getAttribute("name") || "";
-                    if (id) positionNameById.set(id, name);
-                });
+                const sceneObjects = xmlDoc.querySelectorAll("SceneObject");
 
-                if (fixtureNodes.length > 0) {
-                    fixtureNodes.forEach((fixtureNode) => {
-                        const fixtureName = fixtureNode.getAttribute("name") || "";
-                        const uuid = fixtureNode.getAttribute("uuid") || "";
-
-                        const gdtfSpec = fixtureNode.querySelector("GDTFSpec");
-                        let fixtureTypeName = "";
-                        if (gdtfSpec) {
-                            fixtureTypeName = gdtfSpec.textContent || gdtfSpec.getAttribute("name") || "";
-                        }
-
-                        const addresses = fixtureNode.querySelector("Addresses");
-                        let universeAddress = "";
-                        if (addresses) {
-                            const address = addresses.querySelector("Address");
-                            if (address) {
-                                const universe = parseInt(address.getAttribute("break") || "0", 10) + 1;
-                                const dmxAddress = address.textContent || "1";
-                                universeAddress = `${universe}/${dmxAddress}`;
-                            }
-                        }
-
-                        const matrix = fixtureNode.querySelector("Matrix");
-                        let positionData = "";
-                        let posX = "0", posY = "0", posZ = "0";
-                        let matrixText = "";
-                        if (matrix) {
-                            matrixText = matrix.textContent || "";
-                            const matrixMatch = matrixText.match(/\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}/);
-                            if (matrixMatch && matrixMatch[4]) {
-                                const translation = matrixMatch[4].split(',');
-                                posX = translation[0] || "0";
-                                posY = translation[1] || "0";
-                                posZ = translation[2] || "0";
-                                positionData = `${posX},${posY},${posZ}`;
-                            }
-                        }
-
-                        const positionId = fixtureNode.querySelector("Position")?.textContent || "";
-                        const positionName = positionNameById.get(positionId) || positionId || fixtureName;
-
-                        const customId = fixtureNode.querySelector("CustomId")?.textContent || "";
-                        const channelId = fixtureNode.querySelector("ChannelId")?.textContent || "";
-                        const fixtureId = fixtureNode.querySelector("FixtureID")?.textContent || "";
-
-                        const circuitName = fixtureNode.querySelector("CircuitName")?.textContent ||
-                                           fixtureNode.querySelector("Circuit")?.textContent || "-";
-                        const circuitNumber = fixtureNode.querySelector("CircuitNumber")?.textContent ||
-                                             fixtureNode.querySelector("Circuit")?.getAttribute("number") || "";
-                        const wattage = fixtureNode.querySelector("Wattage")?.textContent ||
-                                       fixtureNode.querySelector("Power")?.textContent || "";
-                        const purpose = fixtureNode.querySelector("Purpose")?.textContent ||
-                                       fixtureNode.querySelector("Function")?.textContent || "";
-                        const rotationText = fixtureNode.querySelector("Rotation")?.textContent || "";
-
-                        const mvrMeta = {
-                            positionName: positionName,
-                            uuid: uuid,
-                            position: {
-                                x: parseFloat(posX) || 0,
-                                y: parseFloat(posY) || 0,
-                                z: parseFloat(posZ) || 0
-                            },
-                            matrix: matrixText || "",
-                            rotation: rotationText || "",
-                            layer: "",
-                            group: ""
-                        };
-
-                        fixtures.push({
-                            "Instrument Type": fixtureTypeName || fixtureName,
-                            "Fixture Type": fixtureTypeName || fixtureName,
-                            "Position": positionName,
-                            "Fixture ID": fixtureId || customId || "",
-                            "Channel": channelId || fixtureId || "",
-                            "Universe/Address": universeAddress,
-                            "Circuit Name": circuitName,
-                            "Circuit Number": circuitNumber,
-                            "Wattage": wattage,
-                            "Purpose": purpose,
-                            "UUID": uuid,
-                            "PositionX": posX,
-                            "PositionY": posY,
-                            "PositionZ": posZ,
-                            "Custom Data": positionData,
-                            "MVR Position": positionName,
-                            "MVR Matrix": matrixText,
-                            "MVR Rotation": rotationText,
-                            "MVR Layer": "",
-                            "MVR Group": "",
-                            "__mvr": mvrMeta
-                        });
-                    });
-                }
-
-                if (fixtures.length === 0) {
-                    const sceneObjects = xmlDoc.querySelectorAll("SceneObject");
-
-                    sceneObjects.forEach((sceneObject) => {
-                        const name = sceneObject.getAttribute("name") || "";
-                        const uuid = sceneObject.getAttribute("uuid") || "";
+                sceneObjects.forEach((sceneObject) => {
+                    const name = sceneObject.getAttribute("name") || "";
+                    const uuid = sceneObject.getAttribute("uuid") || "";
 
                     // Get fixture type from GDTFSpec
                     const gdtfSpec = sceneObject.querySelector("GDTFSpec");
@@ -4141,11 +4041,10 @@
                     const matrix = sceneObject.querySelector("Matrix");
                     let positionData = "";
                     let posX = "0", posY = "0", posZ = "0";
-                    let matrixText = "";
                     if (matrix) {
                         // Matrix format: {u1,u2,u3,u4}{v1,v2,v3,v4}{w1,w2,w3,w4}{x,y,z,1}
                         // We want the translation components (x, y, z) from the last row
-                        matrixText = matrix.textContent || "";
+                        const matrixText = matrix.textContent || "";
                         const matrixMatch = matrixText.match(/\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}/);
                         if (matrixMatch && matrixMatch[4]) {
                             const translation = matrixMatch[4].split(',');
@@ -4155,26 +4054,6 @@
                             positionData = `${posX},${posY},${posZ}`;
                         }
                     }
-
-                    const layerName = sceneObject.getAttribute("layer") ||
-                        sceneObject.querySelector("Layer")?.textContent || "";
-                    const groupName = sceneObject.getAttribute("group") ||
-                        sceneObject.querySelector("Group")?.textContent || "";
-                    const rotationText = sceneObject.querySelector("Rotation")?.textContent || "";
-
-                    const mvrMeta = {
-                        positionName: name,
-                        uuid: uuid,
-                        position: {
-                            x: parseFloat(posX) || 0,
-                            y: parseFloat(posY) || 0,
-                            z: parseFloat(posZ) || 0
-                        },
-                        matrix: matrixText || "",
-                        rotation: rotationText || "",
-                        layer: layerName || "",
-                        group: groupName || ""
-                    };
 
                     // Get custom ID/channel/fixture ID
                     const customId = sceneObject.querySelector("CustomId")?.textContent || "";
@@ -4211,18 +4090,11 @@
                         "PositionX": posX,
                         "PositionY": posY,
                         "PositionZ": posZ,
-                        "Custom Data": positionData,
-                        "MVR Position": name,
-                        "MVR Matrix": matrixText,
-                        "MVR Rotation": rotationText,
-                        "MVR Layer": layerName,
-                        "MVR Group": groupName,
-                        "__mvr": mvrMeta
+                        "Custom Data": positionData
                     };
 
-                        fixtures.push(fixture);
-                    });
-                }
+                    fixtures.push(fixture);
+                });
 
                 // Return data in the format expected by loadLXData
                 return {
@@ -4531,8 +4403,7 @@
                         cable: 'Feeder Cable',
                         options: ['#1', '#2', '1/0', '2/0', '3/0', '4/0'],
                         voltage: firstPD.isFlexible ? '120V/208V' : `${firstPD.circuits120 > 0 ? '120V' : ''}${firstPD.circuits120 > 0 && firstPD.circuits208 > 0 ? '/' : ''}${firstPD.circuits208 > 0 ? '208V' : ''}`,
-                        icon: '🔌',
-                        category: 'Feeder'
+                        icon: '🔌'
                     });
                 }
 
@@ -4547,8 +4418,7 @@
                         cable: 'Feeder Thru',
                         cableType: 'Same as input feeder',
                         voltage: 'Passthrough',
-                        icon: '⚡',
-                        category: 'Feeder'
+                        icon: '⚡'
                     });
                 }
 
@@ -4573,10 +4443,8 @@
                             cableType: 'Soca SPX19',
                             voltage: `${voltage}V`,
                             icon: '🔋',
-                            category: 'MULT',
                             position: position,
                             circuitName: circuitName,
-                            isHomeRun: true,
                             fixtures: circuitFixtures
                         });
                     });
@@ -4599,8 +4467,7 @@
                             options: voltage === 120
                                 ? ['Edison Fan Out', 'Tru 1 Fan Out', 'Power Con Fan Out', 'GP Fan Out']
                                 : ['L6-20 Fan Out', 'Tru 1 Fan Out', 'Power Con Fan Out', 'GP Fan Out'],
-                            icon: '🎯',
-                            category: 'Fanout'
+                            icon: '🎯'
                         });
                     });
                 });
@@ -4646,10 +4513,7 @@
                         });
 
                         multsByPosition.forEach((mults, position) => {
-                            let showDataChain = true;
                             mults.forEach(conn => {
-                                conn.showDataChain = showDataChain;
-                                showDataChain = false;
                                 content += renderConnectionCard(conn);
                             });
                         });
@@ -4773,27 +4637,12 @@
 
                 // Sort fixtures by channel (optional - for consistent ordering)
                 const sortedFixtures = [...fixtures].sort((a, b) => {
-                    const typeA = (a['Type'] || a['Instrument Type'] || a['Device Type'] || '').toLowerCase();
-                    const typeB = (b['Type'] || b['Instrument Type'] || b['Device Type'] || '').toLowerCase();
-                    if (typeA !== typeB) return typeA.localeCompare(typeB);
                     const chA = parseInt(a['Channel']) || 0;
                     const chB = parseInt(b['Channel']) || 0;
-                    return chB - chA;
+                    return chA - chB;
                 });
 
                 let currentConnector = fanoutConnector;
-
-                const firstFixture = sortedFixtures[0];
-                let dataCableType = 'A5';
-                const connectorLabel = firstFixture?.tsvMatch?.InputConnectors || firstFixture?.InputConnectors || '';
-                if (connectorLabel) {
-                    const normalized = connectorLabel.toLowerCase();
-                    if (normalized.includes('ethercon')) dataCableType = 'EtherCON';
-                    else if (normalized.includes('a3') || normalized.includes('3-pin')) dataCableType = 'A3';
-                    else if (normalized.includes('a5') || normalized.includes('5-pin')) dataCableType = 'A5';
-                } else if (projectData.dataMode === 'network') {
-                    dataCableType = 'EtherCON';
-                }
 
                 sortedFixtures.forEach((fixture, idx) => {
                     // Determine fixture power inlet and outlet
@@ -5319,70 +5168,28 @@
 
             // Cable length options (in feet)
             const CABLE_LENGTHS = ['5', '10', '15', '25', '50', '100'];
-            const HOME_RUN_LENGTHS = ['25', '50', '75', '100', '150', '200'];
-            const JUMPER_LENGTHS = ['5', '10', '15', '25', '50'];
 
             // Cable management functions
             function getCableEntry(connectionId) {
                 return projectData.cableList.find(c => c.connectionId === connectionId);
             }
 
-            function inferConnectorPair(cableType, cableLabel) {
-                const label = `${cableType || ''} ${cableLabel || ''}`.toLowerCase();
-                if (label.includes('ethercon') || label.includes('cat5')) return { a: 'EtherCON', b: 'EtherCON' };
-                if (label.includes('rj45')) return { a: 'RJ45', b: 'RJ45' };
-                if (label.includes('a5') || label.includes('5-pin')) return { a: 'A5', b: 'A5' };
-                if (label.includes('a3') || label.includes('3-pin')) return { a: 'A3', b: 'A3' };
-                if (label.includes('powercon')) return { a: 'PowerCon', b: 'PowerCon' };
-                if (label.includes('tru1')) return { a: 'Tru1', b: 'Tru1' };
-                if (label.includes('edison')) return { a: 'Edison', b: 'Edison' };
-                if (label.includes('l6-20')) return { a: 'L6-20', b: 'L6-20' };
-                if (label.includes('iec')) return { a: 'IEC', b: 'IEC' };
-                if (label.includes('soca') || label.includes('spx')) return { a: 'Soca', b: 'Soca' };
-                if (label.includes('feeder') || label.includes('cam')) return { a: 'Cam-Lok', b: 'Cam-Lok' };
-                return { a: null, b: null };
-            }
-
-            function inferCableCategory(cableLabel) {
-                const label = (cableLabel || '').toLowerCase();
-                if (label.includes('feeder')) return 'Feeder';
-                if (label.includes('mult')) return 'MULT';
-                if (label.includes('fan out')) return 'Fanout';
-                if (label.includes('fixture power')) return 'Fixture Power';
-                if (label.includes('fixture data')) return 'Fixture Data';
-                if (label.includes('universe') || label.includes('dmx')) return 'DMX';
-                if (label.includes('ethercon') || label.includes('cat5')) return 'Network';
-                return 'Cable';
-            }
-
-            function addOrUpdateCable(connectionId, cableType, from, to, cable, connectorA = null, connectorB = null, category = null) {
+            function addOrUpdateCable(connectionId, cableType, from, to, cable) {
                 let entry = getCableEntry(connectionId);
                 if (!entry) {
                     entry = {
-                        id: connectionId,
                         connectionId: connectionId,
-                        type: cableType,
                         cableType: cableType,
                         from: from,
                         to: to,
-                        length: null,
-                        connectorA: connectorA,
-                        connectorB: connectorB,
-                        category: category,
                         cable: cable,
                         lengths: [],
                         totalLength: 0
                     };
                     projectData.cableList.push(entry);
                 } else {
-                    entry.id = entry.id || connectionId;
-                    entry.type = cableType;
                     entry.cableType = cableType;
                 }
-                const inferred = inferConnectorPair(cableType, cable);
-                entry.connectorA = connectorA || entry.connectorA || inferred.a;
-                entry.connectorB = connectorB || entry.connectorB || inferred.b;
-                entry.category = category || entry.category || inferCableCategory(cable);
                 markProjectUpdated();
                 renderGearList();
             }
@@ -5410,11 +5217,6 @@
                 entry.totalLength = entry.lengths.reduce((sum, l) => {
                     return sum + (parseInt(l.length) * l.quantity);
                 }, 0);
-                if (entry.lengths.length === 1 && entry.lengths[0].quantity === 1) {
-                    entry.length = parseInt(entry.lengths[0].length);
-                } else {
-                    entry.length = null;
-                }
 
                 markProjectUpdated();
                 renderConnections();
@@ -5422,12 +5224,6 @@
                 if (projectData.activeSection === 'connections') {
                     renderConnectionStatus();
                 }
-            }
-
-            function addCableSegment(connectionId, selectId) {
-                const select = document.getElementById(selectId);
-                if (!select || !select.value) return;
-                updateCableLength(connectionId, select.value, 1);
             }
 
             function renderConnectionCard(conn) {
@@ -5466,7 +5262,6 @@
                                                 data-from="${conn.from}"
                                                 data-to="${conn.to}"
                                                 data-cable="${conn.cable}"
-                                                data-category="${conn.category || ''}"
                                                 style="font-size: 10px; padding: 6px 10px; ${selectedCableType === option ? 'background: var(--blue); color: white; border-color: var(--blue);' : ''}">
                                             ${option}
                                         </button>
@@ -5488,8 +5283,7 @@
                                     const from = this.getAttribute('data-from');
                                     const to = this.getAttribute('data-to');
                                     const cable = this.getAttribute('data-cable');
-                                    const category = this.getAttribute('data-category');
-                                    selectCableType(connId, cableType, from, to, cable, category);
+                                    selectCableType(connId, cableType, from, to, cable);
                                 });
                             }
                         });
@@ -5497,45 +5291,13 @@
                 } else if (conn.cableType) {
                     // Single cable type - auto-select it
                     if (!cableEntry) {
-                        addOrUpdateCable(connectionId, conn.cableType, conn.from, conn.to, conn.cable, null, null, conn.category);
+                        addOrUpdateCable(connectionId, conn.cableType, conn.from, conn.to, conn.cable);
                     }
-                }
-
-                let homeRunLengthHtml = '';
-                if (conn.isHomeRun) {
-                    const lengths = cableEntry ? cableEntry.lengths : [];
-                    const totalLength = cableEntry ? cableEntry.totalLength : 0;
-                    homeRunLengthHtml = `
-                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <div style="font-size: 10px; font-weight: 600; color: var(--text-soft);">Home Run Lengths:</div>
-                                ${totalLength > 0 ? `<div style="font-size: 10px; color: var(--blue); font-weight: 600;">Total: ${totalLength}'</div>` : ''}
-                            </div>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
-                                ${HOME_RUN_LENGTHS.map(length => {
-                                    const lengthData = lengths.find(l => l.length === length);
-                                    const qty = lengthData ? lengthData.quantity : 0;
-                                    return `
-                                        <div style="display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg);">
-                                            <button class="btn" onclick="updateCableLength('${connectionId}', '${length}', -1)"
-                                                    style="font-size: 10px; padding: 2px 6px; min-width: 20px;">−</button>
-                                            <div style="flex: 1; text-align: center; font-size: 10px;">
-                                                <div style="font-weight: 600;">${length}'</div>
-                                                ${qty > 0 ? `<div style="font-size: 9px; color: var(--blue);">×${qty}</div>` : `<div style="font-size: 9px; color: var(--text-soft);">0</div>`}
-                                            </div>
-                                            <button class="btn" onclick="updateCableLength('${connectionId}', '${length}', 1)"
-                                                    style="font-size: 10px; padding: 2px 6px; min-width: 20px;">+</button>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
                 }
 
                 // Length selection (if cable type is selected or only one option)
                 // Skip length selection for fan outs (they're adapters, not cables)
-                if (!conn.isHomeRun && !isFanOut && (selectedCableType || (!hasOptions && conn.cableType))) {
+                if (!isFanOut && (selectedCableType || (!hasOptions && conn.cableType))) {
                     const displayType = selectedCableType || conn.cableType;
                     const lengths = cableEntry ? cableEntry.lengths : [];
                     const totalLength = cableEntry ? cableEntry.totalLength : 0;
@@ -5589,7 +5351,7 @@
                         fixturesByCircuit[circuitNum].push(fixture);
                     });
 
-                fixturesHtml = `
+                    fixturesHtml = `
                         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
                             <div style="font-size: 10px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; cursor: pointer;" onclick="toggleFixtureBreakdown('${connectionId}')">
                                 <span>▶ Fixtures (${conn.fixtures.length}) - Click to configure daisy chain</span>
@@ -5602,15 +5364,10 @@
                                             <div style="font-size: 10px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px;">
                                                 Circuit ${circuitNum} • ${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''}
                                             </div>
-                                            ${renderFixtureChain(fixtures, connectionId, circuitNum, conn.voltage, conn.position, false)}
+                                            ${renderFixtureChain(fixtures, connectionId, circuitNum, conn.voltage, conn.position)}
                                         </div>
                                     `;
                                 }).join('')}
-                                ${conn.showDataChain ? renderPositionDataChain(
-                                    projectData.fixtures.filter(f => f['Position'] === conn.position),
-                                    conn.position,
-                                    connectionId
-                                ) : ''}
                             </div>
                         </div>
                     `;
@@ -5630,7 +5387,6 @@
                             </div>
                         </div>
                         ${optionsHtml}
-                        ${homeRunLengthHtml}
                         ${lengthsHtml}
                         ${fixturesHtml}
                     </div>
@@ -5649,66 +5405,12 @@
                     : `▼ Fixtures (${fixtureCount}) - Click to configure daisy chain`;
             }
 
-            function getFixturePosition(fixture) {
-                if (!fixture) return null;
-                const meta = fixture.__mvr;
-                const x = meta?.position?.x ?? parseFloat(fixture.PositionX) ?? 0;
-                const y = meta?.position?.y ?? parseFloat(fixture.PositionY) ?? 0;
-                const z = meta?.position?.z ?? parseFloat(fixture.PositionZ) ?? 0;
-                if ([x, y, z].every(val => !isFinite(val))) return null;
-                return { x: x || 0, y: y || 0, z: z || 0 };
-            }
-
-            function getFixtureDistanceMeters(fromFixture, toFixture) {
-                const fromPos = getFixturePosition(fromFixture);
-                const toPos = getFixturePosition(toFixture);
-                if (!fromPos || !toPos) return null;
-                const dx = toPos.x - fromPos.x;
-                const dy = toPos.y - fromPos.y;
-                const dz = toPos.z - fromPos.z;
-                return Math.sqrt(dx * dx + dy * dy + dz * dz);
-            }
-
-            function formatImperialDistance(distanceMeters) {
-                if (!isFinite(distanceMeters)) return '';
-                const totalFeet = distanceMeters * 3.28084;
-                const feet = Math.floor(totalFeet);
-                let inches = Math.round((totalFeet - feet) * 12);
-                let adjFeet = feet;
-                if (inches === 12) {
-                    adjFeet += 1;
-                    inches = 0;
-                }
-                if (adjFeet === 0 && inches === 0) return `0'`;
-                if (inches === 0) return `${adjFeet}'`;
-                return `${adjFeet}' ${inches}"`;
-            }
-
-            function getDistanceLabel(fromFixture, toFixture) {
-                const distMeters = getFixtureDistanceMeters(fromFixture, toFixture);
-                if (!isFinite(distMeters)) return '';
-                return formatImperialDistance(distMeters);
-            }
-
-            function getSuggestedLengthFeet(distanceFeet, lengthOptions) {
-                if (!isFinite(distanceFeet)) return '';
-                const numeric = lengthOptions.map(val => parseInt(val, 10)).filter(val => !isNaN(val));
-                numeric.sort((a, b) => a - b);
-                for (let i = 0; i < numeric.length; i++) {
-                    if (distanceFeet <= numeric[i]) return String(numeric[i]);
-                }
-                return numeric.length > 0 ? String(numeric[numeric.length - 1]) : '';
-            }
-
             // Render fixture daisy chain for a circuit
-            function renderFixtureChain(fixtures, connectionId, circuitNum, voltage, position = '', showData = true) {
+            function renderFixtureChain(fixtures, connectionId, circuitNum, voltage, position = '') {
                 if (!fixtures || fixtures.length === 0) return '';
 
-                    // Parse voltage to determine connector type options
-                    const voltageNum = parseInt(voltage);
-                    const powerConnectors = voltageNum === 208
-                        ? ['L6-20', 'PowerCon', 'Tru1', 'GP']
-                        : ['Edison', 'IEC', 'PowerCon', 'Tru1', 'GP'];
+                // Parse voltage to determine connector type options
+                const voltageNum = parseInt(voltage);
 
                 let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
 
@@ -5718,13 +5420,6 @@
                     const wattage = fixture['Wattage'] || '';
                     const universeAddress = fixture['Universe/Address'] || '';
                     const fixtureLabel = `${channelName}${fixtureType ? ` • ${fixtureType}` : ''}`;
-                    const prevFixtureLabel = idx > 0
-                        ? `${fixtures[idx - 1]['Channel Name'] || fixtures[idx - 1]['Unit #'] || 'Unknown'}${fixtures[idx - 1]['Type'] ? ` • ${fixtures[idx - 1]['Type']}` : ''}`
-                        : '';
-                    const nextFixtureLabel = idx < fixtures.length - 1
-                        ? `${fixtures[idx + 1]['Channel Name'] || fixtures[idx + 1]['Unit #'] || 'Unknown'}${fixtures[idx + 1]['Type'] ? ` • ${fixtures[idx + 1]['Type']}` : ''}`
-                        : '';
-                    const nextDistance = idx < fixtures.length - 1 ? getDistanceLabel(fixture, fixtures[idx + 1]) : '';
 
                     // Get universe number for data cable type
                     const universeNum = universeAddress ? parseInt(universeAddress.split('/')[0]) : null;
@@ -5757,10 +5452,7 @@
                                     <div style="font-size: 10px; font-weight: 600;">${idx + 1}. ${channelName}</div>
                                     ${fixtureType ? `<div style="font-size: 9px; color: var(--text-soft);">${fixtureType}${wattage ? ` • ${wattage}W` : ''}</div>` : ''}
                                 </div>
-                                <div style="text-align: right;">
-                                    ${universeAddress ? `<div style="font-size: 9px; color: var(--blue); font-weight: 600;">Uni ${universeAddress}</div>` : ''}
-                                    ${nextDistance ? `<div style="font-size: 9px; color: var(--text-soft);">→ ${nextDistance} to next</div>` : ''}
-                                </div>
+                                ${universeAddress ? `<div style="font-size: 9px; color: var(--blue); font-weight: 600;">Uni ${universeAddress}</div>` : ''}
                             </div>
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
@@ -5771,16 +5463,18 @@
                                             data-position="${position}"
                                             data-circuit="${circuitNum}"
                                             data-fixture-label="${fixtureLabel.replace(/\"/g, '&quot;')}"
-                                            data-prev-fixture-label="${prevFixtureLabel.replace(/\"/g, '&quot;')}"
                                             onchange="updateFixtureConnection('${fixtureId}', 'power_in')"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">Select...</option>
-                                        ${powerConnectors.map(connector => `<option value="${connector}">${connector} (F)</option>`).join('')}
+                                        <option value="Edison">Edison</option>
+                                        <option value="Tru1">Tru1</option>
+                                        <option value="PowerCon">PowerCon</option>
+                                        <option value="GP">GP</option>
+                                        <option value="L6-20">L6-20</option>
                                     </select>
                                     <div style="font-size: 8px; color: var(--text-softer); margin-top: 2px;">${voltage}</div>
                                 </div>
 
-                                ${showData ? `
                                 <!-- Data Connector -->
                                 <div style="border: 1px solid var(--border); border-radius: 4px; padding: 6px; background: var(--bg);">
                                     <div style="font-size: 8px; color: var(--text-soft); margin-bottom: 4px;">📡 Data In</div>
@@ -5788,271 +5482,59 @@
                                             data-position="${position}"
                                             data-universe="${universeAddress}"
                                             data-fixture-label="${fixtureLabel.replace(/\"/g, '&quot;')}"
-                                            data-prev-fixture-label="${prevFixtureLabel.replace(/\"/g, '&quot;')}"
                                             onchange="updateFixtureConnection('${fixtureId}', 'data_in')"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">Select...</option>
-                                        <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5) (M)</option>
-                                        <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3) (M)</option>
+                                        <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5)</option>
+                                        <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3)</option>
                                         <option value="EtherCON" ${dataCableType === 'EtherCON' ? 'selected' : ''}>EtherCON</option>
                                         <option value="RJ45">RJ45</option>
                                     </select>
                                 </div>
-                                ` : ''}
 
                                 <!-- Power Out (if not last) -->
                                 ${idx < fixtures.length - 1 ? `
                                 <div style="border: 1px solid var(--border); border-radius: 4px; padding: 6px; background: var(--bg);">
                                     <div style="font-size: 8px; color: var(--text-soft); margin-bottom: 4px;">⚡ Power Out</div>
                                     <select id="${fixtureId}_power_out" onchange="updateFixtureConnection('${fixtureId}', 'power_out')"
-                                            data-position="${position}"
-                                            data-circuit="${circuitNum}"
-                                            data-fixture-label="${fixtureLabel.replace(/\"/g, '&quot;')}"
-                                            data-next-fixture-label="${nextFixtureLabel.replace(/\"/g, '&quot;')}"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">None</option>
-                                        ${powerConnectors.map(connector => `<option value="${connector}">${connector} (F)</option>`).join('')}
+                                        <option value="Edison">Edison</option>
+                                        <option value="Tru1">Tru1</option>
+                                        <option value="PowerCon">PowerCon</option>
+                                        <option value="GP">GP</option>
+                                        <option value="L6-20">L6-20</option>
                                     </select>
                                 </div>
 
-                                ${showData ? `
                                 <!-- Data Out (if not last) -->
                                 <div style="border: 1px solid var(--border); border-radius: 4px; padding: 6px; background: var(--bg);">
                                     <div style="font-size: 8px; color: var(--text-soft); margin-bottom: 4px;">📡 Data Out</div>
                                     <select id="${fixtureId}_data_out" onchange="updateFixtureConnection('${fixtureId}', 'data_out')"
-                                            data-position="${position}"
-                                            data-universe="${universeAddress}"
-                                            data-fixture-label="${fixtureLabel.replace(/\"/g, '&quot;')}"
-                                            data-next-fixture-label="${nextFixtureLabel.replace(/\"/g, '&quot;')}"
                                             style="width: 100%; font-size: 9px; padding: 2px;">
                                         <option value="">None</option>
-                                        <option value="A5">5-pin XLR (A5) (F)</option>
-                                        <option value="A3">3-pin XLR (A3) (F)</option>
+                                        <option value="A5">5-pin XLR (A5)</option>
+                                        <option value="A3">3-pin XLR (A3)</option>
                                         <option value="EtherCON">EtherCON</option>
                                         <option value="RJ45">RJ45</option>
                                     </select>
                                 </div>
                                 ` : ''}
-                                ` : ''}
                             </div>
                         </div>
                     `;
 
-                    // Add connector controls between fixtures
+                    // Add connector arrow between fixtures
                     if (idx < fixtures.length - 1) {
-                        const nextFixture = fixtures[idx + 1];
-                        const nextFixtureId = `${connectionId}_circuit${circuitNum}_fixture${idx + 1}`;
-                        const fromConnector = projectData.fixtureConnections?.[fixtureId]?.power_out || '';
-                        const toConnector = projectData.fixtureConnections?.[nextFixtureId]?.power_in || '';
-                        const connectorMismatch = fromConnector && toConnector && fromConnector !== toConnector;
-                        const mismatchLabel = connectorMismatch ? `⚠️ ${fromConnector} → ${toConnector} adapter needed` : '';
-
-                        let jumperOptions = [];
-                        if (fromConnector && toConnector) {
-                            if (fromConnector === toConnector) {
-                                jumperOptions = [`${fromConnector} Cable`];
-                            } else {
-                                jumperOptions = [`${fromConnector} to ${toConnector} Adapter`, `${fromConnector} to ${toConnector} Cable`];
-                            }
-                        } else if (fromConnector || toConnector) {
-                            const base = fromConnector || toConnector;
-                            jumperOptions = [`${base} Cable`];
-                        } else {
-                            jumperOptions = ['Power Cable'];
-                        }
-
-                        const jumperId = `${fixtureId}_power_jump_${idx}`;
-                        const adapterId = `${jumperId}_adapter`;
-                        let jumperEntry = getCableEntry(jumperId);
-                        let jumperSelected = jumperEntry ? jumperEntry.cableType : '';
-
-                        if (!jumperEntry && jumperOptions.length === 1) {
-                            const fromLabel = `${fixtureLabel} Power Out`;
-                            const toLabel = `${nextFixtureLabel} Power In`;
-                            addOrUpdateCable(jumperId, jumperOptions[0], fromLabel, toLabel, 'Fixture Power', fromConnector, toConnector, 'Fixture Power');
-                            jumperEntry = getCableEntry(jumperId);
-                            jumperSelected = jumperOptions[0];
-                        }
-
-                        if (connectorMismatch && fromConnector && toConnector) {
-                            const adapterLabel = `${fromConnector} (F) → ${toConnector} (M) Adapter`;
-                            const fromLabel = `${fixtureLabel} Power Out`;
-                            const toLabel = `${nextFixtureLabel} Power In`;
-                            addOrUpdateCable(adapterId, adapterLabel, fromLabel, toLabel, 'Adapter', fromConnector, toConnector, 'Adapter');
-                        }
-
-                        const actualMeters = getFixtureDistanceMeters(fixture, nextFixture);
-                        const actualFeet = isFinite(actualMeters) ? actualMeters * 3.28084 : null;
-                        const suggestedLength = actualFeet ? getSuggestedLengthFeet(actualFeet, JUMPER_LENGTHS) : '';
-                        const lengthValue = suggestedLength || '';
-                        const suggestionLabel = actualMeters ? `(~${formatImperialDistance(actualMeters)} actual)` : '';
-                        const lengthSelectId = `${jumperId}_len`;
-                        const jumperSegments = jumperEntry ? jumperEntry.lengths : [];
-
                         html += `
-                            <div style="margin: 6px 0; padding: 8px; border: 1px dashed ${connectorMismatch ? 'var(--warn)' : 'var(--border)'}; border-radius: 6px; background: var(--bg);">
-                                <div style="display: flex; justify-content: center; font-size: 11px; color: var(--text-soft); margin-bottom: 6px;">↓ Daisy Chain ↓</div>
-                                ${connectorMismatch ? `<div style="font-size: 9px; color: var(--warn); font-weight: 600; margin-bottom: 6px;">${mismatchLabel}</div>` : ''}
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                    <select onchange="selectCableType('${jumperId}', this.value, '${fixtureLabel.replace(/\"/g, '&quot;')} Power Out', '${nextFixtureLabel.replace(/\"/g, '&quot;')} Power In', 'Fixture Power', 'Fixture Power')" style="width: 100%; font-size: 9px; padding: 4px;">
-                                        <option value="">Select cable type...</option>
-                                        ${jumperOptions.map(option => `<option value="${option}" ${jumperSelected === option ? 'selected' : ''}>${option}</option>`).join('')}
-                                    </select>
-                                    <div style="display: grid; gap: 4px;">
-                                        <select id="${lengthSelectId}" style="width: 100%; font-size: 9px; padding: 4px;">
-                                            <option value="">Select length...</option>
-                                            ${JUMPER_LENGTHS.map(length => `<option value="${length}" ${lengthValue === length ? 'selected' : ''}>${length}'</option>`).join('')}
-                                        </select>
-                                        <button class="btn" onclick="addCableSegment('${jumperId}', '${lengthSelectId}')" style="font-size: 9px; padding: 4px 6px;">+ Add Segment</button>
-                                        ${suggestionLabel ? `<div style="font-size: 9px; color: var(--text-softer);">${suggestionLabel}</div>` : ''}
-                                    </div>
-                                </div>
-                                ${jumperSegments && jumperSegments.length > 0 ? `
-                                <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">
-                                    ${jumperSegments.map(segment => `
-                                        <div style="display: flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: 9px;">
-                                            <span>${segment.length}' ×${segment.quantity}</span>
-                                            <button class="btn" onclick="updateCableLength('${jumperId}', '${segment.length}', -1)" style="font-size: 8px; padding: 1px 5px;">−</button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                ` : ''}
+                            <div style="text-align: center; color: var(--text-soft); font-size: 11px; margin: 2px 0;">
+                                ↓ Daisy Chain ↓
                             </div>
                         `;
                     }
                 });
 
                 html += '</div>';
-                return html;
-            }
-
-            function renderPositionDataChain(fixtures, position, connectionId) {
-                if (!fixtures || fixtures.length === 0) return '';
-
-                const fixturesByUniverse = new Map();
-                fixtures.forEach(fixture => {
-                    const universeAddress = fixture['Universe/Address'] || '';
-                    const universeNum = universeAddress ? parseInt(universeAddress.split('/')[0]) : null;
-                    if (!universeNum) return;
-                    if (!fixturesByUniverse.has(universeNum)) {
-                        fixturesByUniverse.set(universeNum, []);
-                    }
-                    fixturesByUniverse.get(universeNum).push(fixture);
-                });
-
-                if (fixturesByUniverse.size === 0) return '';
-
-                const sortedUniverses = Array.from(fixturesByUniverse.keys()).sort((a, b) => a - b);
-                let html = '';
-
-                sortedUniverses.forEach((universeNum) => {
-                    const universeFixtures = fixturesByUniverse.get(universeNum) || [];
-                    const sortedFixtures = [...universeFixtures].sort((a, b) => {
-                        const typeA = (a['Type'] || a['Instrument Type'] || a['Device Type'] || '').toLowerCase();
-                        const typeB = (b['Type'] || b['Instrument Type'] || b['Device Type'] || '').toLowerCase();
-                        if (typeA !== typeB) return typeA.localeCompare(typeB);
-                        const chA = parseInt(a['Channel']) || 0;
-                        const chB = parseInt(b['Channel']) || 0;
-                        return chB - chA;
-                    });
-
-                    const firstFixture = sortedFixtures[0];
-                    let dataCableType = '';  // No silent fallback - require user input
-                    let connectorMissing = true;
-                    const connectorLabel = firstFixture?.tsvMatch?.InputConnectors || firstFixture?.InputConnectors || '';
-                    if (connectorLabel) {
-                        connectorMissing = false;
-                        const normalized = connectorLabel.toLowerCase();
-                        if (normalized.includes('ethercon')) dataCableType = 'EtherCON';
-                        else if (normalized.includes('a3') || normalized.includes('3-pin')) dataCableType = 'A3';
-                        else if (normalized.includes('a5') || normalized.includes('5-pin')) dataCableType = 'A5';
-                    }
-                    // No else fallback - user must select if missing
-
-                    const warningBanner = connectorMissing ? `
-                        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid var(--warn); border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                            <span style="font-size: 12px;">⚠️</span>
-                            <span style="font-size: 9px; color: var(--warn); font-weight: 600;">Data connector type unknown - please select below</span>
-                        </div>
-                    ` : '';
-
-                    html += `
-                        <div style="margin-top: 12px; padding: 8px; border: 1px solid ${connectorMissing ? 'var(--warn)' : 'var(--border)'}; border-radius: 6px; background: var(--bg);">
-                            <div style="font-size: 10px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px;">
-                                📡 Data Daisy Chain for ${position} • Universe ${universeNum} ${connectorMissing ? '<span style="color: var(--warn);">⚠️ Input Required</span>' : ''}
-                            </div>
-                            ${warningBanner}
-                    `;
-
-                    sortedFixtures.forEach((fixture, idx) => {
-                        const channelName = fixture['Channel Name'] || fixture['Unit #'] || 'Unknown';
-                        const fixtureType = fixture['Type'] || '';
-                        const fixtureLabel = `${channelName}${fixtureType ? ` • ${fixtureType}` : ''}`;
-                        const universeAddress = fixture['Universe/Address'] || '';
-                        const fixtureId = `${connectionId}_datachain_u${universeNum}_${idx}`;
-                        const prevFixtureLabel = idx > 0
-                            ? `${sortedFixtures[idx - 1]['Channel Name'] || sortedFixtures[idx - 1]['Unit #'] || 'Unknown'}${sortedFixtures[idx - 1]['Type'] ? ` • ${sortedFixtures[idx - 1]['Type']}` : ''}`
-                            : '';
-                        const nextFixtureLabel = idx < sortedFixtures.length - 1
-                            ? `${sortedFixtures[idx + 1]['Channel Name'] || sortedFixtures[idx + 1]['Unit #'] || 'Unknown'}${sortedFixtures[idx + 1]['Type'] ? ` • ${sortedFixtures[idx + 1]['Type']}` : ''}`
-                            : '';
-                        const nextDistance = idx < sortedFixtures.length - 1 ? getDistanceLabel(fixture, sortedFixtures[idx + 1]) : '';
-
-                        html += `
-                            <div style="padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--card); margin-bottom: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
-                                    <div>
-                                        <div style="font-size: 10px; font-weight: 600;">${idx + 1}. ${channelName}</div>
-                                        ${fixtureType ? `<div style="font-size: 9px; color: var(--text-soft);">${fixtureType}</div>` : ''}
-                                    </div>
-                                    <div style="text-align: right;">
-                                        ${universeAddress ? `<div style="font-size: 9px; color: var(--blue); font-weight: 600;">Uni ${universeAddress}</div>` : ''}
-                                        ${nextDistance ? `<div style="font-size: 9px; color: var(--text-soft);">→ ${nextDistance} to next</div>` : ''}
-                                    </div>
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                    <div style="border: 1px solid ${connectorMissing ? 'var(--warn)' : 'var(--border)'}; border-radius: 4px; padding: 6px; background: ${connectorMissing ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg)'};">
-                                        <div style="font-size: 8px; color: ${connectorMissing ? 'var(--warn)' : 'var(--text-soft)'}; margin-bottom: 4px;">📡 Data In ${connectorMissing ? '⚠️' : ''}</div>
-                                        <select id="${fixtureId}_data_in"
-                                                data-position="${position}"
-                                                data-universe="${universeAddress}"
-                                                data-fixture-label="${fixtureLabel.replace(/\"/g, '&quot;')}"
-                                                data-prev-fixture-label="${prevFixtureLabel.replace(/\"/g, '&quot;')}"
-                                                onchange="updateFixtureConnection('${fixtureId}', 'data_in')"
-                                                style="width: 100%; font-size: 9px; padding: 2px; ${connectorMissing ? 'border: 1px solid var(--warn); background: rgba(245, 158, 11, 0.1);' : ''}">
-                                            <option value="">${connectorMissing ? '⚠️ Select connector...' : 'Select...'}</option>
-                                        <option value="A5" ${dataCableType === 'A5' ? 'selected' : ''}>5-pin XLR (A5) (M)</option>
-                                        <option value="A3" ${dataCableType === 'A3' ? 'selected' : ''}>3-pin XLR (A3) (M)</option>
-                                        <option value="EtherCON" ${dataCableType === 'EtherCON' ? 'selected' : ''}>EtherCON</option>
-                                            <option value="RJ45">RJ45</option>
-                                        </select>
-                                    </div>
-                                    ${idx < sortedFixtures.length - 1 ? `
-                                    <div style="border: 1px solid var(--border); border-radius: 4px; padding: 6px; background: var(--bg);">
-                                        <div style="font-size: 8px; color: var(--text-soft); margin-bottom: 4px;">📡 Data Out</div>
-                                        <select id="${fixtureId}_data_out"
-                                                data-position="${position}"
-                                                data-universe="${universeAddress}"
-                                                data-fixture-label="${fixtureLabel.replace(/\"/g, '&quot;')}"
-                                                data-next-fixture-label="${nextFixtureLabel.replace(/\"/g, '&quot;')}"
-                                                onchange="updateFixtureConnection('${fixtureId}', 'data_out')"
-                                                style="width: 100%; font-size: 9px; padding: 2px;">
-                                            <option value="">None</option>
-                                        <option value="A5">5-pin XLR (A5) (F)</option>
-                                        <option value="A3">3-pin XLR (A3) (F)</option>
-                                        <option value="EtherCON">EtherCON</option>
-                                            <option value="RJ45">RJ45</option>
-                                        </select>
-                                    </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div>`;
-                });
-
                 return html;
             }
 
@@ -6076,38 +5558,28 @@
                 const position = element.getAttribute('data-position') || 'Position';
                 const circuit = element.getAttribute('data-circuit') || '';
                 const universe = element.getAttribute('data-universe') || '';
-                const prevFixtureLabel = element.getAttribute('data-prev-fixture-label') || '';
-                const nextFixtureLabel = element.getAttribute('data-next-fixture-label') || '';
 
-                if (connectionType === 'power_in' || connectionType === 'power_out') {
+                if (connectionType === 'power_in') {
                     const cableType = value ? `${value} Cable` : '';
                     if (cableType) {
-                        const from = connectionType === 'power_in'
-                            ? (prevFixtureLabel ? `${prevFixtureLabel} Power Out` : `${position} Circuit ${circuit}`.trim())
-                            : `${fixtureLabel} Power Out`;
-                        const to = connectionType === 'power_in'
-                            ? `${fixtureLabel} Power In`
-                            : (nextFixtureLabel ? `${nextFixtureLabel} Power In` : `${position} Circuit ${circuit}`.trim());
+                        const from = `${position} Circuit ${circuit}`.trim();
+                        const to = `${fixtureLabel} Power In`;
                         const connectionId = `${fixtureId}_${connectionType}`;
-                        addOrUpdateCable(connectionId, cableType, from, to, 'Fixture Power', value, value, 'Fixture Power');
+                        addOrUpdateCable(connectionId, cableType, from, to, 'Fixture Power');
                     }
                 }
 
-                if (connectionType === 'data_in' || connectionType === 'data_out') {
+                if (connectionType === 'data_in') {
                     let cableType = '';
                     if (value === 'A5') cableType = 'DMX 5-pin (A5)';
                     if (value === 'A3') cableType = 'DMX 3-pin (A3)';
                     if (value === 'EtherCON') cableType = 'EtherCON';
                     if (value === 'RJ45') cableType = 'RJ45';
                     if (cableType) {
-                        const from = connectionType === 'data_in'
-                            ? (prevFixtureLabel ? `${prevFixtureLabel} Data Out` : `${position} ${universe ? `Universe ${universe}` : 'Data'}`.trim())
-                            : `${fixtureLabel} Data Out`;
-                        const to = connectionType === 'data_in'
-                            ? `${fixtureLabel} Data In`
-                            : (nextFixtureLabel ? `${nextFixtureLabel} Data In` : `${position} ${universe ? `Universe ${universe}` : 'Data'}`.trim());
+                        const from = `${position} ${universe ? `Universe ${universe}` : 'Data'}`.trim();
+                        const to = `${fixtureLabel} Data In`;
                         const connectionId = `${fixtureId}_${connectionType}`;
-                        addOrUpdateCable(connectionId, cableType, from, to, 'Fixture Data', value, value, 'Fixture Data');
+                        addOrUpdateCable(connectionId, cableType, from, to, 'Fixture Data');
                     }
                 }
 
@@ -6116,8 +5588,8 @@
                 console.log(`Fixture ${fixtureId}: ${connectionType} = ${value}`);
             }
 
-            function selectCableType(connectionId, cableType, from, to, cable, category = null) {
-                addOrUpdateCable(connectionId, cableType, from, to, cable, null, null, category);
+            function selectCableType(connectionId, cableType, from, to, cable) {
+                addOrUpdateCable(connectionId, cableType, from, to, cable);
                 renderConnections();
             }
 
@@ -6362,17 +5834,10 @@
                 const gearListGroup = $('gearListGroup');
                 const gearListContent = $('gearListContent');
                 const gearListCount = $('gearListCount');
-                if (!gearListGroup || !gearListContent || !gearListCount) return;
-                const cableList = Array.isArray(projectData.cableList) ? projectData.cableList : [];
 
                 // Filter to only show cables with lengths selected
-                const cablesWithLengths = cableList.filter(cable => cable.lengths && cable.lengths.length > 0);
-                const cablesWithoutLengths = cableList.filter(cable => !cable.lengths || cable.lengths.length === 0);
-                const adapters = cableList.filter(cable =>
-                    cable.category === 'Adapter' ||
-                    (cable.cableType && cable.cableType.toLowerCase().includes('adapter')) ||
-                    (cable.cable && cable.cable.toLowerCase().includes('adapter'))
-                );
+                const cablesWithLengths = projectData.cableList.filter(cable => cable.lengths && cable.lengths.length > 0);
+                const cablesWithoutLengths = projectData.cableList.filter(cable => !cable.lengths || cable.lengths.length === 0);
 
                 if (cablesWithLengths.length === 0 && cablesWithoutLengths.length === 0) {
                     gearListGroup.style.display = 'none';
@@ -6429,8 +5894,11 @@
                     html += `
                         <div style="padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <div style="font-size: 11px; font-weight: 600;">${entry.length}' ${entry.cableType}</div>
+                                <div style="font-size: 11px; font-weight: 600;">${entry.cableType}</div>
                                 <div style="font-size: 11px; font-weight: 600; color: var(--blue);">×${entry.quantity}</div>
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-soft);">
+                                ${entry.length}ft
                             </div>
                             <div style="font-size: 9px; color: var(--text-softer); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${connectionsText}">
                                 ${connectionsText}
@@ -6439,50 +5907,9 @@
                     `;
                 });
 
-                if (adapters.length > 0) {
-                    const adaptersByType = new Map();
-                    adapters.forEach(cable => {
-                        const key = cable.cableType || cable.cable || 'Adapter';
-                        if (!adaptersByType.has(key)) {
-                            adaptersByType.set(key, { cableType: key, quantity: 0, connections: [] });
-                        }
-                        const entry = adaptersByType.get(key);
-                        entry.quantity += 1;
-                        entry.connections.push({ from: cable.from, to: cable.to });
-                    });
-
-                    html += `
-                        <div style="margin-top: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
-                            <div style="font-size: 11px; font-weight: 600; margin-bottom: 6px;">Adapters</div>
-                            <div style="display: grid; gap: 6px;">
-                    `;
-
-                    adaptersByType.forEach(entry => {
-                        const connectionsText = entry.connections.length > 3
-                            ? `${entry.connections.length} connections`
-                            : entry.connections.map(c => `${c.from}→${c.to}`).join(', ');
-                        html += `
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="font-size: 10px; font-weight: 600;">${entry.cableType}</div>
-                                <div style="font-size: 10px; color: var(--text-soft);">×${entry.quantity}</div>
-                            </div>
-                            <div style="font-size: 9px; color: var(--text-softer); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${connectionsText}">
-                                ${connectionsText}
-                            </div>
-                        `;
-                    });
-
-                    html += `
-                            </div>
-                        </div>
-                    `;
-                }
-
                 if (cablesWithoutLengths.length > 0) {
                     const pendingByType = new Map();
-                    cablesWithoutLengths.filter(cable =>
-                        !adapters.includes(cable)
-                    ).forEach(cable => {
+                    cablesWithoutLengths.forEach(cable => {
                         const key = cable.cableType || 'Unknown Cable';
                         if (!pendingByType.has(key)) {
                             pendingByType.set(key, { cableType: key, quantity: 0, connections: [] });
@@ -6638,8 +6065,7 @@
                             cable: 'EtherCON',
                             cableType: 'Cat5e/Cat6',
                             info: `${node.universes} universe capacity`,
-                            icon: '🧠',
-                            category: 'Network'
+                            icon: '🧠'
                         });
                     });
                 }
@@ -6653,8 +6079,7 @@
                             cable: 'DMX Cable',
                             cableType: '5-pin XLR (A5)',
                             info: `${splitter.universes} universe(s)`,
-                            icon: '🎛️',
-                            category: 'DMX'
+                            icon: '🎛️'
                         });
                     });
                 }
@@ -6673,8 +6098,7 @@
                                     cable: 'DMX Cable',
                                     cableType: '5-pin XLR (A5)',
                                     info: `Split universe replication`,
-                                    icon: '🔀',
-                                    category: 'DMX'
+                                    icon: '🔀'
                                 });
                             }
                         }
@@ -6715,10 +6139,8 @@
                                 cable: `Universe ${universeNum}`,
                                 cableType: cableType,
                                 icon: '📡',
-                                category: 'DMX',
                                 position: position,
-                                universe: universeNum,
-                                isHomeRun: true
+                                universe: universeNum
                             });
                         }
                     });
@@ -7074,44 +6496,9 @@
                     const assigned208 = pd.assignedCircuits ? pd.assignedCircuits.filter(c => c.voltage === 208) : [];
 
                     let capacityDisplay = '';
-                    let electricalDisplay = '';
                     let assignedDisplay = '';
                     let isOverCapacity = false;
                     let warningBadge = '';
-
-                    if (pd.voltage || pd.phase || pd.amperage || pd.mults || (pd.load && typeof pd.load === 'object')) {
-                        const hasLoad = pd.load && typeof pd.load === 'object';
-                        const l1 = hasLoad ? Number(pd.load.L1 || 0) : 0;
-                        const l2 = hasLoad ? Number(pd.load.L2 || 0) : 0;
-                        const l3 = hasLoad ? Number(pd.load.L3 || 0) : 0;
-                        const totalLoad = l1 + l2 + l3;
-                        const phaseCount = Number(pd.phase || 0);
-                        const maxLoad = phaseCount > 0 && pd.amperage ? Number(pd.amperage) * phaseCount : 0;
-                        const loadPct = maxLoad > 0 ? Math.min((totalLoad / maxLoad) * 100, 100) : 0;
-                        const loadBarClass = loadPct > 90 ? 'danger' : loadPct > 75 ? 'warning' : '';
-
-                        electricalDisplay = `
-                            <div style="font-size: 11px; color: var(--text-soft); margin-bottom: 6px;">
-                                ${pd.voltage ? `${pd.voltage}V` : ''}
-                                ${pd.phase ? ` ${pd.phase}Ø` : ''}
-                                ${pd.amperage ? ` • ${pd.amperage}A` : ''}
-                                ${pd.mults ? ` • ${pd.mults} MULTs` : ''}
-                            </div>
-                            <div class="capacity-bar">
-                                <div class="capacity-fill ${loadBarClass}" style="width: ${loadPct}%"></div>
-                            </div>
-                            <div style="font-size: 10px; margin-top: 4px;">
-                                ${maxLoad > 0 ? `Load: ${totalLoad.toFixed(1)}A / ${maxLoad}A (${loadPct.toFixed(0)}%)` : 'Load: —'}
-                            </div>
-                            ${hasLoad && pd.phase === 3 ? `
-                                <div class="phase-loads">
-                                    <div class="phase-load">L1: ${l1.toFixed(1)}A</div>
-                                    <div class="phase-load">L2: ${l2.toFixed(1)}A</div>
-                                    <div class="phase-load">L3: ${l3.toFixed(1)}A</div>
-                                </div>
-                            ` : ''}
-                        `;
-                    }
 
                     if (pd.isFlexible) {
                         // Presidential: Show combined capacity (flexMults total)
@@ -7197,7 +6584,6 @@
                                 ${!pd.isFlexible && pd.circuits208 > 0 ? `${pd.circuits208} × 208V circuits` : ''}
                             </div>
                             ${pd.notes ? `<div style="font-size: 10px; color: var(--text-soft); margin-top: 4px;">${pd.notes}</div>` : ''}
-                            ${electricalDisplay}
                             ${capacityDisplay}
                             ${assignedDisplay}
                         </div>

@@ -3923,58 +3923,87 @@
                     mergedData = { ...fileData.mvr };
                 }
 
-                // Intelligently merge TXT data with MVR data (TXT is source of truth)
+                // Intelligently merge TXT data with MVR data
                 if (fileData.txt && fileData.txt.fixtures && fileData.mvr && fileData.mvr.fixtures) {
                     const mvrFixtures = fileData.mvr.fixtures;
                     const txtFixtures = fileData.txt.fixtures;
 
-                    const mvrByPosition = new Map();
-                    const mvrByFixtureId = new Map();
-                    const mvrByUID = new Map();
+                    // Create a merged fixtures array
+                    const mergedFixtures = [];
 
-                    mvrFixtures.forEach(mvrFix => {
-                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
-                        if (mvrUID) {
-                            mvrByUID.set(String(mvrUID).trim(), mvrFix);
+                    // Build lookup maps for efficient matching
+                    const txtByPosition = new Map();
+                    const txtByFixtureId = new Map();
+                    const txtByUID = new Map();
+
+                    txtFixtures.forEach(txtFix => {
+                        const uidValue = txtFix.__UID || txtFix.UID || txtFix.UUID;
+                        if (uidValue) {
+                            txtByUID.set(String(uidValue).trim(), txtFix);
                         }
-                        if (mvrFix.Position) {
-                            mvrByPosition.set(mvrFix.Position.trim().toLowerCase(), mvrFix);
+                        if (txtFix.Position) {
+                            txtByPosition.set(txtFix.Position.trim().toLowerCase(), txtFix);
                         }
-                        if (mvrFix["Fixture ID"]) {
-                            mvrByFixtureId.set(mvrFix["Fixture ID"].trim(), mvrFix);
+                        if (txtFix["Fixture ID"]) {
+                            txtByFixtureId.set(txtFix["Fixture ID"].trim(), txtFix);
                         }
                     });
 
-                    const mergedFixtures = txtFixtures.map(txtFix => {
-                        let mvrMatch = null;
-                        const txtUID = txtFix.__UID || txtFix.UID || txtFix.UUID;
-                        if (txtUID) {
-                            mvrMatch = mvrByUID.get(String(txtUID).trim());
-                        }
-                        if (!mvrMatch && txtFix.Position) {
-                            mvrMatch = mvrByPosition.get(txtFix.Position.trim().toLowerCase());
-                        }
-                        if (!mvrMatch && txtFix["Fixture ID"]) {
-                            mvrMatch = mvrByFixtureId.get(txtFix["Fixture ID"].trim());
+                    // Merge each MVR fixture with matching TXT fixture
+                    mvrFixtures.forEach(mvrFix => {
+                        let txtMatch = null;
+                        const mvrUID = mvrFix.UUID || mvrFix.__UID || mvrFix.UID;
+
+                        // Try to match by UID first
+                        if (mvrUID) {
+                            txtMatch = txtByUID.get(String(mvrUID).trim());
                         }
 
-                        if (!mvrMatch) {
-                            return { ...txtFix };
+                        // If no match by UID, try Position
+                        if (!txtMatch && mvrFix.Position) {
+                            txtMatch = txtByPosition.get(mvrFix.Position.trim().toLowerCase());
                         }
 
-                        const merged = { ...txtFix };
-                        if (mvrMatch.__mvr) {
-                            merged.__mvr = mvrMatch.__mvr;
+                        // If no match by Position, try Fixture ID
+                        if (!txtMatch && mvrFix["Fixture ID"]) {
+                            txtMatch = txtByFixtureId.get(mvrFix["Fixture ID"].trim());
                         }
-                        if ((!merged["MVR Position"] || merged["MVR Position"] === '-') && mvrMatch["MVR Position"]) {
-                            merged["MVR Position"] = mvrMatch["MVR Position"];
+
+                        // Merge the data - TXT data takes precedence for overlapping fields
+                        const merged = txtMatch ? { ...mvrFix, ...txtMatch } : { ...mvrFix };
+
+                        // Preserve MVR spatial metadata for cable-length calculations
+                        if (mvrFix.__mvr && !merged.__mvr) {
+                            merged.__mvr = mvrFix.__mvr;
+                        }
+                        if ((!merged["MVR Position"] || merged["MVR Position"] === '-') && mvrFix["MVR Position"]) {
+                            merged["MVR Position"] = mvrFix["MVR Position"];
                         }
                         ["PositionX", "PositionY", "PositionZ", "Custom Data", "MVR Matrix", "MVR Rotation", "MVR Layer", "MVR Group"].forEach((key) => {
-                            if ((merged[key] === undefined || merged[key] === null || merged[key] === '') && mvrMatch[key] !== undefined) {
-                                merged[key] = mvrMatch[key];
+                            if ((merged[key] === undefined || merged[key] === null || merged[key] === '') && mvrFix[key] !== undefined) {
+                                merged[key] = mvrFix[key];
                             }
                         });
-                        return merged;
+                        mergedFixtures.push(merged);
+                    });
+
+                    // Add any TXT fixtures that didn't match an MVR fixture
+                    txtFixtures.forEach(txtFix => {
+                        const uidMatch = (txtFix.__UID || txtFix.UID || txtFix.UUID) &&
+                            mvrFixtures.some(m => {
+                                const mvrUID = m.UUID || m.__UID || m.UID;
+                                return mvrUID && String(mvrUID).trim() === String(txtFix.__UID || txtFix.UID || txtFix.UUID).trim();
+                            });
+                        const positionMatch = txtFix.Position &&
+                            mvrFixtures.some(m => m.Position &&
+                                m.Position.trim().toLowerCase() === txtFix.Position.trim().toLowerCase());
+                        const idMatch = txtFix["Fixture ID"] &&
+                            mvrFixtures.some(m => m["Fixture ID"] &&
+                                m["Fixture ID"].trim() === txtFix["Fixture ID"].trim());
+
+                        if (!uidMatch && !positionMatch && !idMatch) {
+                            mergedFixtures.push({ ...txtFix });
+                        }
                     });
 
                     mergedData.fixtures = mergedFixtures;
@@ -7074,44 +7103,9 @@
                     const assigned208 = pd.assignedCircuits ? pd.assignedCircuits.filter(c => c.voltage === 208) : [];
 
                     let capacityDisplay = '';
-                    let electricalDisplay = '';
                     let assignedDisplay = '';
                     let isOverCapacity = false;
                     let warningBadge = '';
-
-                    if (pd.voltage || pd.phase || pd.amperage || pd.mults || (pd.load && typeof pd.load === 'object')) {
-                        const hasLoad = pd.load && typeof pd.load === 'object';
-                        const l1 = hasLoad ? Number(pd.load.L1 || 0) : 0;
-                        const l2 = hasLoad ? Number(pd.load.L2 || 0) : 0;
-                        const l3 = hasLoad ? Number(pd.load.L3 || 0) : 0;
-                        const totalLoad = l1 + l2 + l3;
-                        const phaseCount = Number(pd.phase || 0);
-                        const maxLoad = phaseCount > 0 && pd.amperage ? Number(pd.amperage) * phaseCount : 0;
-                        const loadPct = maxLoad > 0 ? Math.min((totalLoad / maxLoad) * 100, 100) : 0;
-                        const loadBarClass = loadPct > 90 ? 'danger' : loadPct > 75 ? 'warning' : '';
-
-                        electricalDisplay = `
-                            <div style="font-size: 11px; color: var(--text-soft); margin-bottom: 6px;">
-                                ${pd.voltage ? `${pd.voltage}V` : ''}
-                                ${pd.phase ? ` ${pd.phase}Ø` : ''}
-                                ${pd.amperage ? ` • ${pd.amperage}A` : ''}
-                                ${pd.mults ? ` • ${pd.mults} MULTs` : ''}
-                            </div>
-                            <div class="capacity-bar">
-                                <div class="capacity-fill ${loadBarClass}" style="width: ${loadPct}%"></div>
-                            </div>
-                            <div style="font-size: 10px; margin-top: 4px;">
-                                ${maxLoad > 0 ? `Load: ${totalLoad.toFixed(1)}A / ${maxLoad}A (${loadPct.toFixed(0)}%)` : 'Load: —'}
-                            </div>
-                            ${hasLoad && pd.phase === 3 ? `
-                                <div class="phase-loads">
-                                    <div class="phase-load">L1: ${l1.toFixed(1)}A</div>
-                                    <div class="phase-load">L2: ${l2.toFixed(1)}A</div>
-                                    <div class="phase-load">L3: ${l3.toFixed(1)}A</div>
-                                </div>
-                            ` : ''}
-                        `;
-                    }
 
                     if (pd.isFlexible) {
                         // Presidential: Show combined capacity (flexMults total)
@@ -7197,7 +7191,6 @@
                                 ${!pd.isFlexible && pd.circuits208 > 0 ? `${pd.circuits208} × 208V circuits` : ''}
                             </div>
                             ${pd.notes ? `<div style="font-size: 10px; color: var(--text-soft); margin-top: 4px;">${pd.notes}</div>` : ''}
-                            ${electricalDisplay}
                             ${capacityDisplay}
                             ${assignedDisplay}
                         </div>
