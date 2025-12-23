@@ -1,0 +1,48 @@
+DeviceType	DeviceID	Name	Variant	Manufacturer	Category	ConfigMode	Modes	InputConnectors	OutputConnectors	PowerIn	PowerOut	Voltage	Wattage	Circuits120	Circuits208	FlexMults	PowerReq	Notes	GearItems
+PowerDistro	applied	Applied Distro		Applied	Power Distribution	fixed						120V/208V		30	6	0		3x L21-30 connectors
+PowerDistro	lex48	Lex 48 Circuit Presidential		Lex	Power Distribution	flexible						120V/208V		0	0	8		User configures each MULT as 120V or 208V
+PowerDistro	lex15	Lex 15x20amp Edison Distro		Lex	Power Distribution	fixed						120V		12	0	0		2x 120V MULTs	2x Edison to MULT FAN IN
+PowerDistro	lex12	Lex 12x20amp L6-20 208V Distro		Lex	Power Distribution	fixed						208V		0	12	0		2x 208V MULTs	2x L6-20 to MULT FAN IN
+DataDistro	netx2	Chauvet Net-X II		Chauvet	Data Distribution - Node	fixed		1×EtherCON	8×A3+8×A5							True1 or Edison	8 universes, outputs can be A3 or A5 (user choice per output)
+DataDistro	pathport	Pathport Octo		Pathway	Data Distribution - Node	fixed		1×EtherCON	8×A5							True1	8 universes, A5 outputs only
+DataDistro	storm8	ENTTEC Storm 8		ENTTEC	Data Distribution - Node	fixed		1×EtherCON	8×A5							Edison	8 universes, A5 outputs only
+DataDistro	datastream4	Chauvet DJ Data Stream 4		Chauvet	Data Distribution - Splitter	fixed		1×A3/A5	4×A3+4×A5								1 universe in (accepts A3 or A5), 8 total outputs (4×A3 and 4×A5 simultaneously)
+DataDistro	rdmx8	Chauvet RDMX Splitter 8		Chauvet	Data Distribution - Splitter	switchable	1x8|2x4	A5:{1x8:1, 2x4:2}	A5:{1x8:8, 2x4:4×2}								Mode 1x8: 1 A5 in, 8 A5 out | Mode 2x4: 2 A5 in, 4 A5 out per universe
+Fixture	s4_19	Source Four 19		ETC	Ellipsoidal	fixed			Edison		120V	575
+Fixture	s4_26	Source Four 26		ETC	Ellipsoidal	fixed			Edison		120V	575
+Fixture	s4_36	Source Four 36		ETC	Ellipsoidal	fixed			Edison		120V	575
+Fixture	s4_50	Source Four 50		ETC	Ellipsoidal	fixed			Edison		120V	575
+Fixture	s4_par	Source Four PAR		ETC	PAR	fixed			Edison		120V	575
+Fixture	s4_jr	Source Four Jr		ETC	Ellipsoidal	fixed			Edison		120V	575
+Fixture	s4	S4		ETC	Ellipsoidal	fixed			Edison		120V	575
+Fixture	cs_par	ColorSource PAR		ETC	LED PAR	fixed			PowerCon	PowerCon	120V	180
+Fixture	cs_linear	ColorSource Linear		ETC	LED Linear	fixed			PowerCon	PowerCon	120V	200
+Fixture	cs_spot	ColorSource Spot		ETC	LED Ellipsoidal	fixed			PowerCon	PowerCon	120V	180
+Fixture	ovation_e260	Ovation E-260WW		Chauvet	LED Ellipsoidal	fixed			PowerCon	PowerCon	120V	260
+Fixture	ovation_e910	Ovation E-910FC		Chauvet	LED Ellipsoidal	fixed			PowerCon	PowerCon	120V	200
+Fixture	ovation_f165	Ovation F-165WW		Chauvet	LED Fresnel	fixed			PowerCon	PowerCon	120V	165
+Fixture	ovation_f915	Ovation F-915VW		Chauvet	LED Fresnel	fixed			PowerCon	PowerCon	120V	240
+Fixture	rogue_r1_spot_pc	Rogue R1 Spot	PowerCon	Chauvet	Moving Light - Spot	fixed			PowerCon	PowerCon	208V	300				PowerCon version with thru
+Fixture	rogue_r1_spot_t1	Rogue R1 Spot	Tru1	Chauvet	Moving Light - Spot	fixed			Tru1	Tru1	208V	300				Tru1 version with thru
+Fixture	rogue_r2_spot_pc	Rogue R2 Spot	PowerCon	Chauvet	Moving Light - Spot	fixed			PowerCon	PowerCon	208V	470				PowerCon version with thru
+Fixture	rogue_r2_spot_iec	Rogue R2 Spot	IEC	Chauvet	Moving Light - Spot	fixed			IEC		208V	470				IEC version (no thru)
+Fixture	rogue_r2_wash	Rogue R2 Wash		Chauvet	Moving Light - Wash	fixed			PowerCon	PowerCon	208V	380
+Fixture	rogue_r3_spot	Rogue R3 Spot		Chauvet	Moving Light - Spot	fixed			PowerCon	PowerCon	208V	800
+Fixture	artiste_picasso	Artiste Picasso		Elation	Moving Light - Spot	fixed			PowerCon	PowerCon	208V	550
+Fixture	artiste_monet	Artiste Monet		Elation	Moving Light - Wash	fixed			PowerCon	PowerCon	208V	450
+Fixture	mac_aura_pc	MAC Aura	PowerCon	Martin	Moving Light - Wash	fixed			PowerCon	PowerCon	208V	250				PowerCon version
+Fixture	mac_aura_t1	MAC Aura	Tru1	Martin	Moving Light - Wash	fixed			Tru1	Tru1	208V	250				Tru1 version
+Fixture	mac_viper	MAC Viper		Martin	Moving Light - Spot	fixed			PowerCon	PowerCon	208V	1000
+Fixture	ayrton_mistral	Ayrton Mistral		Ayrton	Moving Light - Wash	fixed			PowerCon	PowerCon	208V	520
+Fixture	ayrton_khamsin	Ayrton Khamsin		Ayrton	Moving Light - Spot	fixed			PowerCon	PowerCon	208V	700
+Fixture	par64	PAR64		Generic	PAR Can	fixed			Edison	Edison	120V	1000
+Fixture	par56	PAR56		Generic	PAR Can	fixed			Edison	Edison	120V	500
+Fixture	par38	PAR38		Generic	PAR Can	fixed			Edison	Edison	120V	150
+Fixture	led_par	LED PAR		Generic	LED PAR	fixed			PowerCon	PowerCon	120V	150
+Fixture	led_wash	LED Wash		Generic	LED Wash	fixed			PowerCon	PowerCon	120V	200
+Fixture	fresnel_6	6" Fresnel		Generic	Fresnel	fixed			Edison		120V	750
+Fixture	fresnel_8	8" Fresnel		Generic	Fresnel	fixed			Edison		120V	1000
+Fixture	cyc_light	Cyc Light		Generic	Cyc Light	fixed			Edison	Edison	120V	1000
+Fixture	led_cyc	LED Cyc		Generic	LED Cyc	fixed			PowerCon	PowerCon	120V	300
+Fixture	work_light	Work Light		Generic	Practical	fixed			Edison	Edison	120V	500
+Fixture	practical	Practical		Generic	Practical	fixed			Edison		120V	100
