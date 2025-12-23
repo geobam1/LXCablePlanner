@@ -6861,12 +6861,14 @@
             // ============================================
             function showPDPresets() {
                 $('pdPresetSelection').style.display = 'block';
-                $('addPDBtn').style.display = 'none';
+                const addBtn = $('addPDBtn');
+                if (addBtn) addBtn.style.display = 'none';
             }
 
             function hidePDPresets() {
                 $('pdPresetSelection').style.display = 'none';
-                $('addPDBtn').style.display = 'inline-flex';
+                const addBtn = $('addPDBtn');
+                if (addBtn) addBtn.style.display = 'inline-flex';
             }
 
             function selectPDPreset(presetValue) {
@@ -7418,12 +7420,14 @@
             // ============================================
             function showDDDevices() {
                 $('ddDeviceSelection').style.display = 'block';
-                $('addDDBtn').style.display = 'none';
+                const addBtn = $('addDDBtn');
+                if (addBtn) addBtn.style.display = 'none';
             }
 
             function hideDDDevices() {
                 $('ddDeviceSelection').style.display = 'none';
-                $('addDDBtn').style.display = 'inline-flex';
+                const addBtn = $('addDDBtn');
+                if (addBtn) addBtn.style.display = 'inline-flex';
             }
 
             function selectDDDevice(devicePreset) {
